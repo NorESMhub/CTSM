@@ -9,6 +9,8 @@ Module SoilHydrologyType
   use clm_varctl            , only : iulog
   use LandunitType          , only : lun                
   use ColumnType            , only : col                
+  use WaterStateBulkType    , only : waterstatebulk_type
+  use column_varcon         , only : icol_shadewall, icol_road_perv, icol_road_imperv, icol_roof, icol_sunwall
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -25,13 +27,11 @@ Module SoilHydrologyType
      real(r8), pointer :: zwt_col           (:)     ! col water table depth
      real(r8), pointer :: zwts_col          (:)     ! col water table depth, the shallower of the two water depths
      real(r8), pointer :: zwt_perched_col   (:)     ! col perched water table depth
-     real(r8), pointer :: wa_col            (:)     ! col water in the unconfined aquifer (mm)
      real(r8), pointer :: qcharge_col       (:)     ! col aquifer recharge rate (mm/s) 
      real(r8), pointer :: fracice_col       (:,:)   ! col fractional impermeability (-)
      real(r8), pointer :: icefrac_col       (:,:)   ! col fraction of ice       
-     real(r8), pointer :: fcov_col          (:)     ! col fractional impermeable area
-     real(r8), pointer :: fsat_col          (:)     ! col fractional area with water table at surface
      real(r8), pointer :: h2osfc_thresh_col (:)     ! col level at which h2osfc "percolates"   (time constant)
+     real(r8), pointer :: xs_urban_col      (:)     ! col excess soil water above urban ponding limit
 
      ! VIC 
      real(r8), pointer :: hkdepth_col       (:)     ! col VIC decay factor (m) (time constant)                    
@@ -49,8 +49,10 @@ Module SoilHydrologyType
      real(r8), pointer :: moist_col         (:,:)   ! col VIC soil moisture (kg/m2) for VIC soil layers 
      real(r8), pointer :: moist_vol_col     (:,:)   ! col VIC volumetric soil moisture for VIC soil layers 
      real(r8), pointer :: max_moist_col     (:,:)   ! col VIC max layer moist + ice (mm) 
-     real(r8), pointer :: max_infil_col     (:)     ! col VIC maximum infiltration rate calculated in VIC
-     real(r8), pointer :: i_0_col           (:)     ! col VIC average saturation in top soil layers 
+     real(r8), pointer :: top_moist_col     (:)     ! col VIC soil moisture in top layers
+     real(r8), pointer :: top_max_moist_col (:)     ! col VIC maximum soil moisture in top layers
+     real(r8), pointer :: top_ice_col       (:)     ! col VIC ice len in top layers
+     real(r8), pointer :: top_moist_limited_col(:)  ! col VIC soil moisture in top layers, limited to no greater than top_max_moist_col
      real(r8), pointer :: ice_col           (:,:)   ! col VIC soil ice (kg/m2) for VIC soil layers
 
    contains
@@ -74,16 +76,18 @@ Module SoilHydrologyType
 contains
   
   !------------------------------------------------------------------------
-  subroutine Init(this, bounds, NLFilename)
+  subroutine Init(this, bounds, NLFilename, waterstatebulk_inst, use_aquifer_layer)
 
     class(soilhydrology_type) :: this
     type(bounds_type), intent(in)    :: bounds  
     character(len=*), intent(in) :: NLFilename
+    type(waterstatebulk_type) , intent(inout) :: waterstatebulk_inst
+    logical                  , intent(in)    :: use_aquifer_layer ! whether an aquifer layer is used in this run
 
     call this%ReadNL(NLFilename)
     call this%InitAllocate(bounds) 
     call this%InitHistory(bounds)
-    call this%InitCold(bounds)
+    call this%InitCold(bounds, waterstatebulk_inst, use_aquifer_layer)
 
   end subroutine Init
 
@@ -116,13 +120,11 @@ contains
     allocate(this%zwt_perched_col   (begc:endc))                 ; this%zwt_perched_col   (:)     = nan
     allocate(this%zwts_col          (begc:endc))                 ; this%zwts_col          (:)     = nan
 
-    allocate(this%wa_col            (begc:endc))                 ; this%wa_col            (:)     = nan
     allocate(this%qcharge_col       (begc:endc))                 ; this%qcharge_col       (:)     = nan
     allocate(this%fracice_col       (begc:endc,nlevgrnd))        ; this%fracice_col       (:,:)   = nan
     allocate(this%icefrac_col       (begc:endc,nlevgrnd))        ; this%icefrac_col       (:,:)   = nan
-    allocate(this%fcov_col          (begc:endc))                 ; this%fcov_col          (:)     = nan   
-    allocate(this%fsat_col          (begc:endc))                 ; this%fsat_col          (:)     = nan
     allocate(this%h2osfc_thresh_col (begc:endc))                 ; this%h2osfc_thresh_col (:)     = nan
+    allocate(this%xs_urban_col      (begc:endc))                 ; this%xs_urban_col      (:)     = nan
 
     allocate(this%hkdepth_col       (begc:endc))                 ; this%hkdepth_col       (:)     = nan
     allocate(this%b_infil_col       (begc:endc))                 ; this%b_infil_col       (:)     = nan
@@ -139,8 +141,10 @@ contains
     allocate(this%moist_col         (begc:endc,nlayert))         ; this%moist_col         (:,:)   = nan
     allocate(this%moist_vol_col     (begc:endc,nlayert))         ; this%moist_vol_col     (:,:)   = nan
     allocate(this%max_moist_col     (begc:endc,nlayer))          ; this%max_moist_col     (:,:)   = nan
-    allocate(this%max_infil_col     (begc:endc))                 ; this%max_infil_col     (:)     = nan
-    allocate(this%i_0_col           (begc:endc))                 ; this%i_0_col           (:)     = nan
+    allocate(this%top_moist_col     (begc:endc))                 ; this%top_moist_col     (:)     = nan
+    allocate(this%top_max_moist_col (begc:endc))                 ; this%top_max_moist_col (:)     = nan
+    allocate(this%top_ice_col       (begc:endc))                 ; this%top_ice_col       (:)     = nan
+    allocate(this%top_moist_limited_col(begc:endc))              ; this%top_moist_limited_col(:)  = nan
     allocate(this%ice_col           (begc:endc,nlayert))         ; this%ice_col           (:,:)   = nan
 
   end subroutine InitAllocate
@@ -163,25 +167,10 @@ contains
     begc = bounds%begc; endc= bounds%endc
     begg = bounds%begg; endg= bounds%endg
 
-    this%wa_col(begc:endc) = spval
-    call hist_addfld1d (fname='WA',  units='mm',  &
-         avgflag='A', long_name='water in the unconfined aquifer (vegetated landunits only)', &
-         ptr_col=this%wa_col, l2g_scale_type='veg')
-
     this%qcharge_col(begc:endc) = spval
     call hist_addfld1d (fname='QCHARGE',  units='mm/s',  &
-         avgflag='A', long_name='aquifer recharge rate (vegetated landunits only)', &
+         avgflag='A', long_name='aquifer recharge rate (natural vegetated and crop landunits only)', &
          ptr_col=this%qcharge_col, l2g_scale_type='veg')
-
-    this%fcov_col(begc:endc) = spval
-    call hist_addfld1d (fname='FCOV',  units='unitless',  &
-         avgflag='A', long_name='fractional impermeable area', &
-         ptr_col=this%fcov_col, l2g_scale_type='veg')
-
-    this%fsat_col(begc:endc) = spval
-    call hist_addfld1d (fname='FSAT',  units='unitless',  &
-         avgflag='A', long_name='fractional area with water table at surface', &
-         ptr_col=this%fsat_col, l2g_scale_type='veg')
 
     this%num_substeps_col(begc:endc) = spval
     call hist_addfld1d (fname='NSUBSTEPS',  units='unitless',  &
@@ -191,40 +180,96 @@ contains
 
     this%frost_table_col(begc:endc) = spval
     call hist_addfld1d (fname='FROST_TABLE',  units='m',  &
-         avgflag='A', long_name='frost table depth (vegetated landunits only)', &
+         avgflag='A', long_name='frost table depth (natural vegetated and crop landunits only)', &
          ptr_col=this%frost_table_col, l2g_scale_type='veg', default='inactive')
 
     this%zwt_col(begc:endc) = spval
     call hist_addfld1d (fname='ZWT',  units='m',  &
-         avgflag='A', long_name='water table depth (vegetated landunits only)', &
+         avgflag='A', long_name='water table depth (natural vegetated and crop landunits only)', &
          ptr_col=this%zwt_col, l2g_scale_type='veg')
 
     this%zwt_perched_col(begc:endc) = spval
     call hist_addfld1d (fname='ZWT_PERCH',  units='m',  &
-         avgflag='A', long_name='perched water table depth (vegetated landunits only)', &
+         avgflag='A', long_name='perched water table depth (natural vegetated and crop landunits only)', &
          ptr_col=this%zwt_perched_col, l2g_scale_type='veg')
 
   end subroutine InitHistory
 
   !-----------------------------------------------------------------------
-  subroutine InitCold(this, bounds)
+  subroutine InitCold(this, bounds, waterstatebulk_inst, &
+      use_aquifer_layer)
     !
     ! !USES:
     !
     ! !ARGUMENTS:
-    class(soilhydrology_type) :: this
-    type(bounds_type) , intent(in)    :: bounds
+    class(soilhydrology_type)                 :: this
+    type(bounds_type)         , intent(in)    :: bounds
+    type(waterstatebulk_type) , intent(inout) :: waterstatebulk_inst
+    logical                   , intent(in)    :: use_aquifer_layer ! whether an aquifer layer is used in this run
+    
     ! !LOCAL VARIABLES:
-    integer :: c ! indices
-
+    integer            :: c,l
     !-----------------------------------------------------------------------
-
-    ! Nothing for now
-
     ! needs to be initialized to spval to avoid problems when 
     ! averaging for the accum field
     do c = bounds%begc, bounds%endc
        this%num_substeps_col(c) = spval
+    end do
+
+    !-----------------------------------------------------------------------
+    ! Initialize frost table
+    !-----------------------------------------------------------------------
+
+    this%zwt_col(bounds%begc:bounds%endc) = 0._r8
+
+    do c = bounds%begc,bounds%endc
+       l = col%landunit(c)
+       if (.not. lun%lakpoi(l)) then  !not lake
+          if (lun%urbpoi(l)) then
+             if (col%itype(c) == icol_road_perv) then
+                if (use_aquifer_layer) then
+                   ! NOTE(wjs, 2018-11-27) There is no fundamental reason why zwt should
+                   ! be initialized differently based on use_aquifer_layer, but we (Bill
+                   ! Sacks and Sean Swenson) are changing the cold start initialization of
+                   ! wa_col when use_aquifer_layer is .false., and so need to come up with
+                   ! a different cold start initialization of zwt in that case, but we
+                   ! don't want to risk messing up the use_aquifer_layer = .true.  case,
+                   ! so we're keeping that as it was before.
+    
+                   ! Note that the following hard-coded constants (on the next line)
+                   ! seem implicitly related to the initial value of wa_col
+                   this%zwt_col(c) = (25._r8 + col%zi(c,nlevsoi)) - waterstatebulk_inst%wa_col(c)/0.2_r8 /1000._r8  ! One meter below soil column
+                else
+                   this%zwt_col(c) = col%zi(c,col%nbedrock(c))
+                end if
+             else
+                this%zwt_col(c) = spval
+             end if
+             ! initialize frost_table, zwt_perched
+             this%zwt_perched_col(c) = spval
+             this%frost_table_col(c) = spval
+          else
+             if (use_aquifer_layer) then
+                ! NOTE(wjs, 2018-11-27) There is no fundamental reason why zwt should
+                ! be initialized differently based on use_aquifer_layer, but we (Bill
+                ! Sacks and Sean Swenson) are changing the cold start initialization of
+                ! wa_col when use_aquifer_layer is .false., and so need to come up with
+                ! a different cold start initialization of zwt in that case, but we
+                ! don't want to risk messing up the use_aquifer_layer = .true.  case,
+                ! so we're keeping that as it was before.
+    
+                ! Note that the following hard-coded constants (on the next line) seem
+                ! implicitly related to the initial value of wa_col
+                this%zwt_col(c) = (25._r8 + col%zi(c,nlevsoi)) - waterstatebulk_inst%wa_col(c)/0.2_r8 /1000._r8
+             else
+                this%zwt_col(c) = col%zi(c,col%nbedrock(c))
+             end if
+    
+             ! initialize frost_table, zwt_perched to bottom of soil column
+             this%zwt_perched_col(c) = col%zi(c,nlevsoi)
+             this%frost_table_col(c) = col%zi(c,nlevsoi)
+          end if
+       end if
     end do
 
   end subroutine InitCold
@@ -254,11 +299,6 @@ contains
     if (flag == 'read' .and. .not. readvar) then
        this%frost_table_col(bounds%begc:bounds%endc) = col%zi(bounds%begc:bounds%endc,nlevsoi)
     end if
-
-    call restartvar(ncid=ncid, flag=flag, varname='WA', xtype=ncd_double,  & 
-         dim1name='column', &
-         long_name='water in the unconfined aquifer', units='mm', &
-         interpinic_flag='interp', readvar=readvar, data=this%wa_col)
 
     call restartvar(ncid=ncid, flag=flag, varname='ZWT', xtype=ncd_double,  & 
          dim1name='column', &

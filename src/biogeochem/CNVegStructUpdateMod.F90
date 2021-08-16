@@ -8,7 +8,7 @@ module CNVegStructUpdateMod
   use shr_const_mod        , only : SHR_CONST_PI
   use clm_varctl           , only : iulog, use_cndv
   use CNDVType             , only : dgv_ecophyscon    
-  use WaterStateType       , only : waterstate_type
+  use WaterDiagnosticBulkType       , only : waterdiagnosticbulk_type
   use FrictionVelocityMod  , only : frictionvel_type
   use CNDVType             , only : dgvs_type
   use CNVegStateType       , only : cnveg_state_type
@@ -28,7 +28,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CNVegStructUpdate(num_soilp, filter_soilp, &
-       waterstate_inst, frictionvel_inst, dgvs_inst, cnveg_state_inst, crop_inst, &
+       waterdiagnosticbulk_inst, frictionvel_inst, dgvs_inst, cnveg_state_inst, crop_inst, &
        cnveg_carbonstate_inst, canopystate_inst)
     !
     ! !DESCRIPTION:
@@ -41,6 +41,8 @@ contains
     use pftconMod        , only : ntmp_corn, nirrig_tmp_corn
     use pftconMod        , only : ntrp_corn, nirrig_trp_corn
     use pftconMod        , only : nsugarcane, nirrig_sugarcane
+    use pftconMod        , only : nmiscanthus, nirrig_miscanthus, nswitchgrass, nirrig_switchgrass
+    
     use pftconMod        , only : pftcon
     use clm_varctl       , only : spinup_state
     use clm_time_manager , only : get_rad_step_size
@@ -48,7 +50,7 @@ contains
     ! !ARGUMENTS:
     integer                      , intent(in)    :: num_soilp       ! number of column soil points in patch filter
     integer                      , intent(in)    :: filter_soilp(:) ! patch filter for soil points
-    type(waterstate_type)        , intent(in)    :: waterstate_inst
+    type(waterdiagnosticbulk_type)        , intent(in)    :: waterdiagnosticbulk_inst
     type(frictionvel_type)       , intent(in)    :: frictionvel_inst
     type(dgvs_type)              , intent(in)    :: dgvs_inst
     type(cnveg_state_type)       , intent(inout) :: cnveg_state_inst
@@ -104,7 +106,7 @@ contains
          nind               =>  dgvs_inst%nind_patch                    , & ! Input:  [real(r8) (:) ] number of individuals (#/m**2)                    
          fpcgrid            =>  dgvs_inst%fpcgrid_patch                 , & ! Input:  [real(r8) (:) ] fractional area of patch (pft area/nat veg area)    
 
-         snow_depth         =>  waterstate_inst%snow_depth_col          , & ! Input:  [real(r8) (:) ] snow height (m)                                   
+         snow_depth         =>  waterdiagnosticbulk_inst%snow_depth_col          , & ! Input:  [real(r8) (:) ] snow height (m)                                   
 
          forc_hgt_u_patch   =>  frictionvel_inst%forc_hgt_u_patch       , & ! Input:  [real(r8) (:) ] observational height of wind at patch-level [m]     
 
@@ -232,7 +234,9 @@ contains
 
                if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
                    ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
-                   ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
+                   ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane .or. &
+                   ivt(p) == nmiscanthus .or. ivt(p) == nirrig_miscanthus .or. &
+                   ivt(p) == nswitchgrass .or. ivt(p) == nirrig_switchgrass) then
                   tsai(p) = 0.1_r8 * tlai(p)
                else
                   tsai(p) = 0.2_r8 * tlai(p)

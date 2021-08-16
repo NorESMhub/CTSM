@@ -412,10 +412,12 @@ contains
     col%gridcell(ci) = lun%gridcell(li)
     col%wtlunit(ci) = wtlunit
     col%itype(ci) = ctype
+    col%lun_itype(ci) = lun%itype(li)
     col%type_is_dynamic(ci) = l_type_is_dynamic
     col%hydrologically_active(ci) = is_hydrologically_active( &
          col_itype = ctype, &
          lun_itype = lun%itype(li))
+    col%urbpoi(ci) = lun%urbpoi(li)
 
   end subroutine add_column
 

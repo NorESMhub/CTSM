@@ -28,15 +28,18 @@ module CNDriverMod
   use CanopyStateType                 , only : canopystate_type
   use SoilStateType                   , only : soilstate_type
   use TemperatureType                 , only : temperature_type
-  use WaterstateType                  , only : waterstate_type
-  use WaterfluxType                   , only : waterflux_type
+  use WaterStateBulkType                  , only : waterstatebulk_type
+  use WaterDiagnosticBulkType                  , only : waterdiagnosticbulk_type
+  use WaterFluxBulkType                   , only : waterfluxbulk_type
+  use Wateratm2lndBulkType                   , only : wateratm2lndbulk_type
   use atm2lndType                     , only : atm2lnd_type
   use SoilStateType                   , only : soilstate_type
   use TemperatureType                 , only : temperature_type 
   use PhotosynthesisMod               , only : photosyns_type
   use ch4Mod                          , only : ch4_type
   use EnergyFluxType                  , only : energyflux_type
-  use SoilHydrologyType               , only : soilhydrology_type
+  use SaturatedExcessRunoffMod        , only : saturated_excess_runoff_type
+  use ActiveLayerMod                  , only : active_layer_type
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -61,17 +64,17 @@ contains
     ! !USES:
     use CNSharedParamsMod           , only : use_fun
     use CNPhenologyMod              , only : CNPhenologyInit
-    use CNFireMethodMod             , only : cnfire_method_type
+    use FireMethodType              , only : fire_method_type
     use SoilBiogeochemCompetitionMod, only : SoilBiogeochemCompetitionInit
     !
     ! !ARGUMENTS:
     type(bounds_type)                      , intent(in)    :: bounds      
     character(len=*)                       , intent(in)    :: NLFilename     ! Namelist filename
-    class(cnfire_method_type)              , intent(inout) :: cnfire_method 
+    class(fire_method_type)                , intent(inout) :: cnfire_method 
     !-----------------------------------------------------------------------
     call SoilBiogeochemCompetitionInit(bounds)
     call CNPhenologyInit(bounds)
-    call cnfire_method%CNFireInit(bounds, NLFilename)
+    call cnfire_method%FireInit(bounds, NLFilename)
     
   end subroutine CNDriverInit
 
@@ -89,10 +92,11 @@ contains
        c14_soilbiogeochem_carbonflux_inst, c14_soilbiogeochem_carbonstate_inst,            &
        soilbiogeochem_state_inst,                                                          &
        soilbiogeochem_nitrogenflux_inst, soilbiogeochem_nitrogenstate_inst,                &
-       atm2lnd_inst, waterstate_inst, waterflux_inst,                                      &
-       canopystate_inst, soilstate_inst, temperature_inst, crop_inst, ch4_inst,            &
-       dgvs_inst, photosyns_inst, soilhydrology_inst, energyflux_inst,                     &
-       nutrient_competition_method, cnfire_method)
+       active_layer_inst,                                                                  &
+       atm2lnd_inst, waterstatebulk_inst, waterdiagnosticbulk_inst, waterfluxbulk_inst,    &
+       wateratm2lndbulk_inst, canopystate_inst, soilstate_inst, temperature_inst, crop_inst, ch4_inst,            &
+       dgvs_inst, photosyns_inst, saturated_excess_runoff_inst, energyflux_inst,                   &
+       nutrient_competition_method, cnfire_method, dribble_crophrv_xsmrpool_2atm)
     !
     ! !DESCRIPTION:
     ! The core CN code is executed here. Calculates fluxes for maintenance
@@ -103,14 +107,14 @@ contains
     ! !USES:
     use clm_varpar                        , only: nlevgrnd, nlevdecomp_full 
     use clm_varpar                        , only: nlevdecomp, ndecomp_cascade_transitions, ndecomp_pools
-    use subgridAveMod                     , only: p2c, p2c_2d
+    use subgridAveMod                     , only: p2c
     use CropType                          , only: crop_type
     use CNNDynamicsMod                    , only: CNNDeposition,CNNFixation, CNNFert, CNSoyfix,CNFreeLivingFixation
     use CNMRespMod                        , only: CNMResp
     use CNFUNMod                          , only: CNFUNInit  !, CNFUN 
     use CNPhenologyMod                    , only: CNPhenology
     use CNGRespMod                        , only: CNGResp
-    use CNFireMethodMod                   , only: cnfire_method_type
+    use FireMethodType                    , only: fire_method_type
     use CNCIsoFluxMod                     , only: CIsoFlux1, CIsoFlux2, CIsoFlux2h, CIsoFlux3
     use CNC14DecayMod                     , only: C14Decay
     use CNCStateUpdate1Mod                , only: CStateUpdate1,CStateUpdate0
@@ -165,9 +169,12 @@ contains
     type(soilbiogeochem_carbonstate_type)   , intent(inout) :: c14_soilbiogeochem_carbonstate_inst
     type(soilbiogeochem_nitrogenflux_type)  , intent(inout) :: soilbiogeochem_nitrogenflux_inst
     type(soilbiogeochem_nitrogenstate_type) , intent(inout) :: soilbiogeochem_nitrogenstate_inst
+    type(active_layer_type)                 , intent(in)    :: active_layer_inst
     type(atm2lnd_type)                      , intent(in)    :: atm2lnd_inst
-    type(waterstate_type)                   , intent(in)    :: waterstate_inst
-    type(waterflux_type)                    , intent(inout)    :: waterflux_inst
+    type(waterstatebulk_type)                   , intent(in)    :: waterstatebulk_inst
+    type(waterdiagnosticbulk_type)                   , intent(in)    :: waterdiagnosticbulk_inst
+    type(waterfluxbulk_type)                    , intent(inout)    :: waterfluxbulk_inst
+    type(wateratm2lndbulk_type)                    , intent(inout)    :: wateratm2lndbulk_inst
     type(canopystate_type)                  , intent(inout)    :: canopystate_inst
     type(soilstate_type)                    , intent(inout) :: soilstate_inst
     type(temperature_type)                  , intent(inout) :: temperature_inst
@@ -175,10 +182,11 @@ contains
     type(ch4_type)                          , intent(in)    :: ch4_inst
     type(dgvs_type)                         , intent(inout) :: dgvs_inst
     type(photosyns_type)                    , intent(in)    :: photosyns_inst
-    type(soilhydrology_type)                , intent(in)    :: soilhydrology_inst
+    type(saturated_excess_runoff_type)      , intent(in)    :: saturated_excess_runoff_inst
     type(energyflux_type)                   , intent(in)    :: energyflux_inst
     class(nutrient_competition_method_type) , intent(inout) :: nutrient_competition_method
-    class(cnfire_method_type)               , intent(inout) :: cnfire_method
+    class(fire_method_type)                 , intent(inout) :: cnfire_method
+    logical                                 , intent(in)    :: dribble_crophrv_xsmrpool_2atm
     !
     ! !LOCAL VARIABLES:
     real(r8):: cn_decomp_pools(bounds%begc:bounds%endc,1:nlevdecomp,1:ndecomp_pools)
@@ -195,12 +203,7 @@ contains
     begp = bounds%begp; endp = bounds%endp
     begc = bounds%begc; endc = bounds%endc
 
-    !real(r8) , intent(in)    :: rootfr_patch(bounds%begp:, 1:)          
-    !integer  , intent(in)    :: altmax_lastyear_indx_col(bounds%begc:)  ! frost table depth (m)
-
     associate(                                                                    &
-         crootfr_patch             => soilstate_inst%crootfr_patch              , & ! fraction of roots for carbon in each soil layer  (nlevgrnd)
-         altmax_lastyear_indx_col  => canopystate_inst%altmax_lastyear_indx_col , & ! frost table depth (m)
          laisun                    => canopystate_inst%laisun_patch             , & ! Input:  [real(r8) (:)   ]  sunlit projected leaf area index        
          laisha                    => canopystate_inst%laisha_patch             , & ! Input:  [real(r8) (:)   ]  shaded projected leaf area index        
          frac_veg_nosno            => canopystate_inst%frac_veg_nosno_patch     , & ! Input:  [integer  (:)   ]  fraction of vegetation not covered by snow (0 OR 1) [-]
@@ -268,7 +271,7 @@ contains
     if(use_fun)then
         call t_startf('CNFLivFixation')
         call CNFreeLivingFixation( num_soilc, filter_soilc, &
-             waterflux_inst, soilbiogeochem_nitrogenflux_inst)
+             waterfluxbulk_inst, soilbiogeochem_nitrogenflux_inst)
         call t_stopf('CNFLivFixation')
     else
        call t_startf('CNFixation')
@@ -284,7 +287,7 @@ contains
 
        if (.not. use_fun) then  ! if FUN is active, then soy fixation handled by FUN
           call  CNSoyfix (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-               waterstate_inst, crop_inst, cnveg_state_inst, cnveg_nitrogenflux_inst , &
+               waterdiagnosticbulk_inst, crop_inst, cnveg_state_inst, cnveg_nitrogenflux_inst , &
                soilbiogeochem_state_inst, soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst)
        end if
     end if
@@ -302,10 +305,10 @@ contains
     call t_startf('SoilBiogeochem')
     if (use_century_decomp) then
        call decomp_rate_constants_bgc(bounds, num_soilc, filter_soilc, &
-            canopystate_inst, soilstate_inst, temperature_inst, ch4_inst, soilbiogeochem_carbonflux_inst)
+            soilstate_inst, temperature_inst, ch4_inst, soilbiogeochem_carbonflux_inst)
     else
        call decomp_rate_constants_cn(bounds, num_soilc, filter_soilc, &
-            canopystate_inst, soilstate_inst, temperature_inst, ch4_inst, soilbiogeochem_carbonflux_inst)
+            soilstate_inst, temperature_inst, ch4_inst, soilbiogeochem_carbonflux_inst)
     end if
 
     ! calculate potential decomp rates and total immobilization demand (previously inlined in CNDecompAlloc)
@@ -318,12 +321,12 @@ contains
 
     ! calculate vertical profiles for distributing soil and litter C and N (previously subroutine decomp_vertprofiles called from CNDecompAlloc)
     call SoilBiogeochemVerticalProfile(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-         canopystate_inst, soilstate_inst,soilbiogeochem_state_inst)
+         active_layer_inst, soilstate_inst,soilbiogeochem_state_inst)
 
     ! calculate nitrification and denitrification rates (previously subroutine nitrif_denitrif called from CNDecompAlloc)
     if (use_nitrif_denitrif) then 
        call SoilBiogeochemNitrifDenitrif(bounds, num_soilc, filter_soilc, &
-            soilstate_inst, waterstate_inst, temperature_inst, ch4_inst, &
+            soilstate_inst, waterstatebulk_inst, temperature_inst, ch4_inst, &
             soilbiogeochem_carbonflux_inst, soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst)
     end if
     call t_stopf('SoilBiogeochem')
@@ -349,7 +352,7 @@ contains
        call t_startf('CNPhenology_phase1')
        call CNPhenology (bounds, num_soilc, filter_soilc, num_soilp, &
             filter_soilp, num_pcropp, filter_pcropp, &
-            doalb, waterstate_inst, temperature_inst, atm2lnd_inst, &
+            doalb, waterdiagnosticbulk_inst, wateratm2lndbulk_inst, temperature_inst, atm2lnd_inst, &
             crop_inst, canopystate_inst, soilstate_inst, dgvs_inst, &
             cnveg_state_inst, cnveg_carbonstate_inst, cnveg_carbonflux_inst, &
             cnveg_nitrogenstate_inst, cnveg_nitrogenflux_inst, &
@@ -387,8 +390,8 @@ contains
  
    
      call t_startf('soilbiogeochemcompetition')
-     call SoilBiogeochemCompetition (bounds, num_soilc, filter_soilc,num_soilp, filter_soilp, waterstate_inst, &
-                                     waterflux_inst,temperature_inst,soilstate_inst,cnveg_state_inst,          &
+     call SoilBiogeochemCompetition (bounds, num_soilc, filter_soilc,num_soilp, filter_soilp, waterstatebulk_inst, &
+                                     waterfluxbulk_inst,temperature_inst,soilstate_inst,cnveg_state_inst,          &
                                      cnveg_carbonstate_inst               ,&
                                      cnveg_carbonflux_inst,cnveg_nitrogenstate_inst,cnveg_nitrogenflux_inst,   &
                                      soilbiogeochem_carbonflux_inst,&
@@ -444,7 +447,7 @@ contains
     if ( .not. use_fun ) then
        call CNPhenology (bounds, num_soilc, filter_soilc, num_soilp, &
             filter_soilp, num_pcropp, filter_pcropp, &
-            doalb, waterstate_inst, temperature_inst, atm2lnd_inst, &
+            doalb, waterdiagnosticbulk_inst, wateratm2lndbulk_inst, temperature_inst, atm2lnd_inst, &
             crop_inst, canopystate_inst, soilstate_inst, dgvs_inst, &
             cnveg_state_inst, cnveg_carbonstate_inst, cnveg_carbonflux_inst, &
             cnveg_nitrogenstate_inst, cnveg_nitrogenflux_inst, &
@@ -455,7 +458,7 @@ contains
     end if
     call CNPhenology (bounds, num_soilc, filter_soilc, num_soilp, &
          filter_soilp, num_pcropp, filter_pcropp, &
-         doalb, waterstate_inst, temperature_inst, atm2lnd_inst, &
+         doalb, waterdiagnosticbulk_inst, wateratm2lndbulk_inst, temperature_inst, atm2lnd_inst, &
          crop_inst, canopystate_inst, soilstate_inst, dgvs_inst, &
          cnveg_state_inst, cnveg_carbonstate_inst, cnveg_carbonflux_inst, &
          cnveg_nitrogenstate_inst, cnveg_nitrogenflux_inst, &
@@ -549,16 +552,16 @@ contains
     ! Update all prognostic carbon state variables (except for gap-phase mortality and fire fluxes)
     call CStateUpdate1( num_soilc, filter_soilc, num_soilp, filter_soilp, &
          crop_inst, cnveg_carbonflux_inst, cnveg_carbonstate_inst, &
-         soilbiogeochem_carbonflux_inst)
+         soilbiogeochem_carbonflux_inst, dribble_crophrv_xsmrpool_2atm)
     if ( use_c13 ) then
        call CStateUpdate1(num_soilc, filter_soilc, num_soilp, filter_soilp, &
             crop_inst, c13_cnveg_carbonflux_inst, c13_cnveg_carbonstate_inst, &
-            c13_soilbiogeochem_carbonflux_inst)
+            c13_soilbiogeochem_carbonflux_inst, dribble_crophrv_xsmrpool_2atm)
     end if
     if ( use_c14 ) then
        call CStateUpdate1(num_soilc, filter_soilc, num_soilp, filter_soilp, &
             crop_inst, c14_cnveg_carbonflux_inst, c14_cnveg_carbonstate_inst, &
-            c14_soilbiogeochem_carbonflux_inst)
+            c14_soilbiogeochem_carbonflux_inst, dribble_crophrv_xsmrpool_2atm)
     end if
 
     ! Update all prognostic nitrogen state variables (except for gap-phase mortality and fire fluxes)
@@ -588,7 +591,7 @@ contains
     call t_startf('SoilBiogeochemLittVertTransp')
 
     call SoilBiogeochemLittVertTransp(bounds, num_soilc, filter_soilc,            &
-         canopystate_inst, soilbiogeochem_state_inst,                             &
+         active_layer_inst, soilbiogeochem_state_inst,                             &
          soilbiogeochem_carbonstate_inst, soilbiogeochem_carbonflux_inst,         &
          c13_soilbiogeochem_carbonstate_inst, c13_soilbiogeochem_carbonflux_inst, &
          c14_soilbiogeochem_carbonstate_inst, c14_soilbiogeochem_carbonflux_inst, &
@@ -744,7 +747,7 @@ contains
 
     call t_startf('CNFire')
     call cnfire_method%CNFireArea(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-         atm2lnd_inst, energyflux_inst, soilhydrology_inst, waterstate_inst, &
+         atm2lnd_inst, energyflux_inst, saturated_excess_runoff_inst, waterdiagnosticbulk_inst, wateratm2lndbulk_inst, &
          cnveg_state_inst, cnveg_carbonstate_inst, &
          totlitc_col=soilbiogeochem_carbonstate_inst%totlitc_col(begc:endc), &
          decomp_cpools_vr_col=soilbiogeochem_carbonstate_inst%decomp_cpools_vr_col(begc:endc,1:nlevdecomp_full,1:ndecomp_pools), &
@@ -818,7 +821,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine CNDriverLeaching(bounds, &
        num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       waterstate_inst, waterflux_inst, &
+       waterstatebulk_inst, waterfluxbulk_inst, &
        cnveg_nitrogenflux_inst, cnveg_nitrogenstate_inst, &
        soilbiogeochem_nitrogenflux_inst, soilbiogeochem_nitrogenstate_inst)
     !
@@ -836,8 +839,8 @@ contains
     integer                                 , intent(in)    :: filter_soilc(:)   ! filter for soil columns
     integer                                 , intent(in)    :: num_soilp         ! number of soil patches in filter
     integer                                 , intent(in)    :: filter_soilp(:)   ! filter for soil patches
-    type(waterstate_type)                   , intent(in)    :: waterstate_inst
-    type(waterflux_type)                    , intent(inout)    :: waterflux_inst
+    type(waterstatebulk_type)                   , intent(in)    :: waterstatebulk_inst
+    type(waterfluxbulk_type)                    , intent(inout)    :: waterfluxbulk_inst
     type(cnveg_nitrogenflux_type)           , intent(inout) :: cnveg_nitrogenflux_inst
     type(cnveg_nitrogenstate_type)          , intent(inout) :: cnveg_nitrogenstate_inst
     type(soilbiogeochem_nitrogenflux_type)  , intent(inout) :: soilbiogeochem_nitrogenflux_inst
@@ -848,7 +851,7 @@ contains
     
     call t_startf('SoilBiogeochemNLeaching')
     call SoilBiogeochemNLeaching(bounds, num_soilc, filter_soilc, &
-         waterstate_inst, waterflux_inst, soilbiogeochem_nitrogenstate_inst, &
+         waterstatebulk_inst, waterfluxbulk_inst, soilbiogeochem_nitrogenstate_inst, &
          soilbiogeochem_nitrogenflux_inst)
     call t_stopf('SoilBiogeochemNLeaching')
 

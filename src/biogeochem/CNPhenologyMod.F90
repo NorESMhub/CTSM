@@ -14,7 +14,7 @@ module CNPhenologyMod
   use shr_log_mod                     , only : errMsg => shr_log_errMsg
   use shr_sys_mod                     , only : shr_sys_flush
   use decompMod                       , only : bounds_type
-  use clm_varpar                      , only : numpft, nlevdecomp_full
+  use clm_varpar                      , only : maxveg, nlevdecomp_full
   use clm_varctl                      , only : iulog, use_cndv
   use clm_varcon                      , only : tfrz
   use abortutils                      , only : endrun
@@ -29,12 +29,13 @@ module CNPhenologyMod
   use pftconMod                       , only : pftcon
   use SoilStateType                   , only : soilstate_type
   use TemperatureType                 , only : temperature_type
-  use WaterstateType                  , only : waterstate_type
-  use ColumnType                      , only : col                
+  use WaterDiagnosticBulkType         , only : waterdiagnosticbulk_type
+  use Wateratm2lndBulkType            , only : wateratm2lndbulk_type
+  use initVerticalMod                 , only : find_soil_layer_containing_depth
+  use ColumnType                      , only : col
   use GridcellType                    , only : grc                
   use PatchType                       , only : patch   
   use atm2lndType                     , only : atm2lnd_type             
-  use atm2lndType                     , only : atm2lnd_type
   !
   implicit none
   private
@@ -58,6 +59,7 @@ module CNPhenologyMod
      real(r8) :: crit_offset_swi ! critical number of water stress days to initiate offset
      real(r8) :: soilpsi_off     ! critical soil water potential for leaf offset
      real(r8) :: lwtop   	 ! live wood turnover proportion (annual fraction)
+     real(r8) :: phenology_soil_depth ! soil depth used for measuring states for phenology triggers
   end type params_type
 
   type(params_type) :: params_inst
@@ -75,6 +77,7 @@ module CNPhenologyMod
   real(r8) :: crit_offset_swi               ! water stress days for offset trigger
   real(r8) :: soilpsi_off                   ! water potential for offset trigger (MPa)
   real(r8) :: lwtop                         ! live wood turnover proportion (annual fraction)
+  integer  :: phenology_soil_layer          ! soil layer used for measuring states for phenology triggers
 
   ! CropPhenology variables and constants
   real(r8) :: p1d, p1v                      ! photoperiod factor constants for crop vernalization
@@ -163,84 +166,36 @@ contains
     ! !DESCRIPTION:
     !
     ! !USES:
-    use ncdio_pio    , only: file_desc_t,ncd_io
+    use ncdio_pio    , only: file_desc_t
+    use paramUtilMod , only : readNcdioScalar
 
     ! !ARGUMENTS:
     implicit none
     type(file_desc_t),intent(inout) :: ncid   ! pio netCDF file id
     !
     ! !LOCAL VARIABLES:
-    character(len=32)  :: subname = 'CNPhenolParamsType'
-    character(len=100) :: errCode = '-Error reading in parameters file:'
-    logical            :: readv ! has variable been read in or not
-    real(r8)           :: tempr ! temporary to read in parameter
-    character(len=100) :: tString ! temp. var for reading
+    character(len=*), parameter  :: subname = 'readParams_CNPhenology'
     !-----------------------------------------------------------------------
 
-    !
-    ! read in parameters
-    !   
-    tString='crit_dayl'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%crit_dayl=tempr
-
-    tString='ndays_on'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%ndays_on=tempr
-
-    tString='ndays_off'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%ndays_off=tempr
-
-    tString='fstor2tran'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%fstor2tran=tempr
-
-    tString='crit_onset_fdd'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%crit_onset_fdd=tempr
-
-    tString='crit_onset_swi'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%crit_onset_swi=tempr
-
-    tString='soilpsi_on'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%soilpsi_on=tempr
-
-    tString='crit_offset_fdd'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%crit_offset_fdd=tempr
-
-    tString='crit_offset_swi'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%crit_offset_swi=tempr
-
-    tString='soilpsi_off'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%soilpsi_off=tempr
-
-    tString='lwtop_ann'
-    call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun( msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%lwtop=tempr   
+    call readNcdioScalar(ncid, 'crit_dayl', subname, params_inst%crit_dayl)
+    call readNcdioScalar(ncid, 'ndays_on', subname, params_inst%ndays_on)
+    call readNcdioScalar(ncid, 'ndays_off', subname, params_inst%ndays_off)
+    call readNcdioScalar(ncid, 'fstor2tran', subname, params_inst%fstor2tran)
+    call readNcdioScalar(ncid, 'crit_onset_fdd', subname, params_inst%crit_onset_fdd)
+    call readNcdioScalar(ncid, 'crit_onset_swi', subname, params_inst%crit_onset_swi)
+    call readNcdioScalar(ncid, 'soilpsi_on', subname, params_inst%soilpsi_on)
+    call readNcdioScalar(ncid, 'crit_offset_fdd', subname, params_inst%crit_offset_fdd)
+    call readNcdioScalar(ncid, 'crit_offset_swi', subname, params_inst%crit_offset_swi)
+    call readNcdioScalar(ncid, 'soilpsi_off', subname, params_inst%soilpsi_off)
+    call readNcdioScalar(ncid, 'lwtop_ann', subname, params_inst%lwtop)
+    call readNcdioScalar(ncid, 'phenology_soil_depth', subname, params_inst%phenology_soil_depth)
 
   end subroutine readParams
 
   !-----------------------------------------------------------------------
   subroutine CNPhenology (bounds, num_soilc, filter_soilc, num_soilp, &
        filter_soilp, num_pcropp, filter_pcropp, &
-       doalb, waterstate_inst, temperature_inst, atm2lnd_inst, crop_inst, &
+       doalb, waterdiagnosticbulk_inst, wateratm2lndbulk_inst, temperature_inst, atm2lnd_inst, crop_inst, &
        canopystate_inst, soilstate_inst, dgvs_inst, &
        cnveg_state_inst, cnveg_carbonstate_inst, cnveg_carbonflux_inst,    &
        cnveg_nitrogenstate_inst, cnveg_nitrogenflux_inst, &
@@ -262,7 +217,8 @@ contains
     integer                        , intent(in)    :: num_pcropp      ! number of prog. crop patches in filter
     integer                        , intent(in)    :: filter_pcropp(:)! filter for prognostic crop patches
     logical                        , intent(in)    :: doalb           ! true if time for sfc albedo calc
-    type(waterstate_type)          , intent(in)    :: waterstate_inst
+    type(waterdiagnosticbulk_type)          , intent(in)    :: waterdiagnosticbulk_inst
+    type(wateratm2lndbulk_type)          , intent(in)    :: wateratm2lndbulk_inst
     type(temperature_type)         , intent(inout) :: temperature_inst
     type(atm2lnd_type)             , intent(in)    :: atm2lnd_inst
     type(crop_type)                , intent(inout) :: crop_inst
@@ -281,8 +237,8 @@ contains
     integer                        , intent(in)    :: phase
     !-----------------------------------------------------------------------
 
-    SHR_ASSERT_ALL((ubound(leaf_prof_patch)   == (/bounds%endp,nlevdecomp_full/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(froot_prof_patch)  == (/bounds%endp,nlevdecomp_full/)), errMsg(sourcefile, __LINE__))
+    SHR_ASSERT_ALL_FL((ubound(leaf_prof_patch)   == (/bounds%endp,nlevdecomp_full/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(froot_prof_patch)  == (/bounds%endp,nlevdecomp_full/)), sourcefile, __LINE__)
 
     ! each of the following phenology type routines includes a filter
     ! to operate only on the relevant patches
@@ -300,12 +256,12 @@ contains
             cnveg_carbonstate_inst, cnveg_nitrogenstate_inst, cnveg_carbonflux_inst, cnveg_nitrogenflux_inst)
 
        call CNStressDecidPhenology(num_soilp, filter_soilp,   &
-            soilstate_inst, temperature_inst, atm2lnd_inst, cnveg_state_inst, &
+            soilstate_inst, temperature_inst, atm2lnd_inst, wateratm2lndbulk_inst, cnveg_state_inst, &
             cnveg_carbonstate_inst, cnveg_nitrogenstate_inst, cnveg_carbonflux_inst, cnveg_nitrogenflux_inst)
 
        if (doalb .and. num_pcropp > 0 ) then
           call CropPhenology(num_pcropp, filter_pcropp, &
-               waterstate_inst, temperature_inst, crop_inst, canopystate_inst, cnveg_state_inst, &
+               waterdiagnosticbulk_inst, temperature_inst, crop_inst, canopystate_inst, cnveg_state_inst, &
                cnveg_carbonstate_inst, cnveg_nitrogenstate_inst, cnveg_carbonflux_inst, cnveg_nitrogenflux_inst, &
                c13_cnveg_carbonstate_inst, c14_cnveg_carbonstate_inst)
        end if
@@ -326,7 +282,7 @@ contains
        call CNLivewoodTurnover(num_soilp, filter_soilp, &
             cnveg_carbonstate_inst, cnveg_nitrogenstate_inst, cnveg_carbonflux_inst, cnveg_nitrogenflux_inst)
 
-       call CNGrainToProductPools(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, &
+       call CNCropHarvestToProductPools(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, &
             cnveg_carbonflux_inst, cnveg_nitrogenflux_inst)
 
        ! gather all patch-level litterfall fluxes to the column for litter C and N inputs
@@ -349,7 +305,7 @@ contains
     ! initialized, and after pftcon file is read in.
     !
     ! !USES:
-    use clm_time_manager, only: get_step_size
+    use clm_time_manager, only: get_step_size_real
     use clm_varctl      , only: use_crop
     use clm_varcon      , only: secspday
     !
@@ -360,7 +316,7 @@ contains
     !
     ! Get time-step and what fraction of a day it is
     !
-    dt      = real( get_step_size(), r8 )
+    dt      = get_step_size_real()
     fracday = dt/secspday
 
     ! set constants for CNSeasonDecidPhenology 
@@ -373,6 +329,10 @@ contains
 
     ! set transfer parameters
     fstor2tran=params_inst%fstor2tran
+
+    call find_soil_layer_containing_depth( &
+         depth = params_inst%phenology_soil_depth, &
+         layer = phenology_soil_layer)
 
     ! -----------------------------------------
     ! Constants for CNStressDecidPhenology
@@ -901,7 +861,7 @@ contains
                ! if the gdd flag is set, and if the soil is above freezing
                ! then accumulate growing degree days for onset trigger
 
-               soilt = t_soisno(c,3)
+               soilt = t_soisno(c, phenology_soil_layer)
                if (onset_gddflag(p) == 1.0_r8 .and. soilt > SHR_CONST_TKFRZ) then
                   onset_gdd(p) = onset_gdd(p) + (soilt-SHR_CONST_TKFRZ)*fracday
                end if
@@ -972,7 +932,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CNStressDecidPhenology (num_soilp, filter_soilp , &
-       soilstate_inst, temperature_inst, atm2lnd_inst, cnveg_state_inst, &
+       soilstate_inst, temperature_inst, atm2lnd_inst, wateratm2lndbulk_inst, cnveg_state_inst, &
        cnveg_carbonstate_inst, cnveg_nitrogenstate_inst, &
        cnveg_carbonflux_inst, cnveg_nitrogenflux_inst)
     !
@@ -1000,6 +960,7 @@ contains
     type(soilstate_type)           , intent(in)    :: soilstate_inst
     type(temperature_type)         , intent(in)    :: temperature_inst
     type(atm2lnd_type)             , intent(in)    :: atm2lnd_inst
+    type(wateratm2lndbulk_type)             , intent(in)    :: wateratm2lndbulk_inst
     type(cnveg_state_type)         , intent(inout) :: cnveg_state_inst
     type(cnveg_carbonstate_type)   , intent(inout) :: cnveg_carbonstate_inst
     type(cnveg_nitrogenstate_type) , intent(inout) :: cnveg_nitrogenstate_inst
@@ -1022,7 +983,7 @@ contains
          ivt                                 =>    patch%itype                                                   , & ! Input:  [integer   (:)   ]  patch vegetation type                                
          dayl                                =>    grc%dayl                                                    , & ! Input:  [real(r8)  (:)   ]  daylength (s)
          
-         prec10                              => atm2lnd_inst%prec10_patch                                     , & ! Input:  [real(r8) (:)     ]  10-day running mean of tot. precipitation
+         prec10                              => wateratm2lndbulk_inst%prec10_patch                                     , & ! Input:  [real(r8) (:)     ]  10-day running mean of tot. precipitation
          leaf_long                           =>    pftcon%leaf_long                                            , & ! Input:  leaf longevity (yrs)                              
          woody                               =>    pftcon%woody                                                , & ! Input:  binary flag for woody lifeform (1=woody, 0=not woody)
          stress_decid                        =>    pftcon%stress_decid                                         , & ! Input:  binary flag for stress-deciduous leaf habit (0 or 1)
@@ -1117,8 +1078,8 @@ contains
          g = patch%gridcell(p)
 
          if (stress_decid(ivt(p)) == 1._r8) then
-            soilt = t_soisno(c,3)
-            psi = soilpsi(c,3)
+            soilt = t_soisno(c, phenology_soil_layer)
+            psi = soilpsi(c, phenology_soil_layer)
 
             ! onset gdd sum from Biome-BGC, v4.1.2
             crit_onset_gdd = exp(4.8_r8 + 0.13_r8*(annavg_t2m(p) - SHR_CONST_TKFRZ))
@@ -1418,7 +1379,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CropPhenology(num_pcropp, filter_pcropp                     , &
-       waterstate_inst, temperature_inst, crop_inst, canopystate_inst, cnveg_state_inst , &
+       waterdiagnosticbulk_inst, temperature_inst, crop_inst, canopystate_inst, cnveg_state_inst , &
        cnveg_carbonstate_inst, cnveg_nitrogenstate_inst, cnveg_carbonflux_inst, cnveg_nitrogenflux_inst,&
        c13_cnveg_carbonstate_inst, c14_cnveg_carbonstate_inst)
 
@@ -1433,6 +1394,8 @@ contains
     use pftconMod        , only : ntrp_corn, nsugarcane, ntrp_soybean, ncotton, nrice
     use pftconMod        , only : nirrig_trp_corn, nirrig_sugarcane, nirrig_trp_soybean
     use pftconMod        , only : nirrig_cotton, nirrig_rice
+    use pftconMod        , only : nmiscanthus, nirrig_miscanthus, nswitchgrass, nirrig_switchgrass
+    
     use clm_varcon       , only : spval, secspday
     use clm_varctl       , only : use_fertilizer 
     use clm_varctl       , only : use_c13, use_c14
@@ -1441,7 +1404,7 @@ contains
     ! !ARGUMENTS:
     integer                        , intent(in)    :: num_pcropp       ! number of prog crop patches in filter
     integer                        , intent(in)    :: filter_pcropp(:) ! filter for prognostic crop patches
-    type(waterstate_type)          , intent(in)    :: waterstate_inst
+    type(waterdiagnosticbulk_type)          , intent(in)    :: waterdiagnosticbulk_inst
     type(temperature_type)         , intent(in)    :: temperature_inst
     type(crop_type)                , intent(inout) :: crop_inst
     type(canopystate_type)         , intent(in)    :: canopystate_inst
@@ -1725,9 +1688,12 @@ contains
                        ivt(p) == ntrp_soybean .or. ivt(p) == nirrig_trp_soybean) then
                      gddmaturity(p) = min(gdd1020(p), hybgdd(ivt(p)))
                   end if
+                  
                   if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
                       ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
-                      ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
+                      ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane .or. &
+                      ivt(p) == nmiscanthus .or. ivt(p) == nirrig_miscanthus .or. &
+                      ivt(p) == nswitchgrass .or. ivt(p) == nirrig_switchgrass) then
                      gddmaturity(p) = max(950._r8, min(gdd820(p)*0.85_r8, hybgdd(ivt(p))))
                      gddmaturity(p) = max(950._r8, min(gddmaturity(p)+150._r8, 1850._r8))
                   end if
@@ -1774,9 +1740,12 @@ contains
                       ivt(p) == ntrp_soybean .or. ivt(p) == nirrig_trp_soybean) then
                      gddmaturity(p) = min(gdd1020(p), hybgdd(ivt(p)))
                   end if
+                  
                   if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
                       ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
-                      ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
+                      ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane .or. &
+                      ivt(p) == nmiscanthus .or. ivt(p) == nirrig_miscanthus .or. &
+                      ivt(p) == nswitchgrass .or. ivt(p) == nirrig_switchgrass) then
                      gddmaturity(p) = max(950._r8, min(gdd820(p)*0.85_r8, hybgdd(ivt(p))))
                   end if
                   if (ivt(p) == nswheat .or. ivt(p) == nirrig_swheat .or. &
@@ -1837,7 +1806,9 @@ contains
 
             if (ivt(p) == ntmp_corn .or. ivt(p) == nirrig_tmp_corn .or. &
                 ivt(p) == ntrp_corn .or. ivt(p) == nirrig_trp_corn .or. &
-                ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane) then
+                ivt(p) == nsugarcane .or. ivt(p) == nirrig_sugarcane .or. &
+                ivt(p) == nmiscanthus .or. ivt(p) == nirrig_miscanthus .or. &
+                ivt(p) == nswitchgrass .or. ivt(p) == nirrig_switchgrass) then
                ! the following estimation of crmcorn from gddmaturity is based on a linear
                ! regression using data from Pioneer-brand corn hybrids (Kucharik, 2003,
                ! Earth Interactions 7:1-33: fig. 2)
@@ -1909,7 +1880,7 @@ contains
             if (t_ref2m_min(p) < 1.e30_r8 .and. vf(p) /= 1._r8 .and. &
                (ivt(p) == nwwheat .or. ivt(p) == nirrig_wwheat)) then
                call vernalization(p, &
-                    canopystate_inst, temperature_inst, waterstate_inst, cnveg_state_inst, &
+                    canopystate_inst, temperature_inst, waterdiagnosticbulk_inst, cnveg_state_inst, &
                     crop_inst)
             end if
 
@@ -2050,8 +2021,8 @@ contains
 
     allocate( inhemi(bounds%begp:bounds%endp) )
 
-    allocate( minplantjday(0:numpft,inSH)) ! minimum planting julian day
-    allocate( maxplantjday(0:numpft,inSH)) ! minimum planting julian day
+    allocate( minplantjday(0:maxveg,inSH)) ! minimum planting julian day
+    allocate( maxplantjday(0:maxveg,inSH)) ! minimum planting julian day
 
     ! Julian day for the start of the year (mid-winter)
     jdayyrstart(inNH) =   1
@@ -2098,7 +2069,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine vernalization(p, &
-       canopystate_inst, temperature_inst, waterstate_inst, cnveg_state_inst, crop_inst)
+       canopystate_inst, temperature_inst, waterdiagnosticbulk_inst, cnveg_state_inst, crop_inst)
     !
     ! !DESCRIPTION:
     !
@@ -2114,7 +2085,7 @@ contains
     integer                , intent(in)    :: p    ! PATCH index running over
     type(canopystate_type) , intent(in)    :: canopystate_inst
     type(temperature_type) , intent(in)    :: temperature_inst
-    type(waterstate_type)  , intent(in)    :: waterstate_inst
+    type(waterdiagnosticbulk_type)  , intent(in)    :: waterdiagnosticbulk_inst
     type(cnveg_state_type) , intent(inout) :: cnveg_state_inst
     type(crop_type)        , intent(inout) :: crop_inst
     !
@@ -2132,7 +2103,7 @@ contains
          t_ref2m_min => temperature_inst%t_ref2m_min_patch , & ! Input:  [real(r8) (:) ] daily minimum of average 2 m height surface air temperature (K)
          t_ref2m_max => temperature_inst%t_ref2m_max_patch , & ! Input:  [real(r8) (:) ] daily maximum of average 2 m height surface air temperature (K)
 
-         snow_depth  => waterstate_inst%snow_depth_col     , & ! Input:  [real(r8) (:) ]  snow height (m)                                   
+         snow_depth  => waterdiagnosticbulk_inst%snow_depth_col     , & ! Input:  [real(r8) (:) ]  snow height (m)                                   
 
          hdidx       => cnveg_state_inst%hdidx_patch       , & ! Output: [real(r8) (:) ]  cold hardening index?                             
          cumvd       => cnveg_state_inst%cumvd_patch       , & ! Output: [real(r8) (:) ]  cumulative vernalization d?ependence?             
@@ -2370,6 +2341,8 @@ contains
     !
     ! !USES:
     use pftconMod        , only : npcropmin
+    use pftconMod        , only : nmiscanthus, nirrig_miscanthus, nswitchgrass, nirrig_switchgrass
+    
     use CNSharedParamsMod, only : use_fun
     use clm_varctl       , only : CNratio_floating    
     !
@@ -2394,7 +2367,10 @@ contains
     associate(                                                                           & 
          ivt                   =>    patch%itype                                       , & ! Input:  [integer  (:) ]  patch vegetation type                                
 
-         leafcn                =>    pftcon%leafcn                                     , & ! Input:  leaf C:N (gC/gN)                                  
+         leafcn                =>    pftcon%leafcn                                     , & ! Input:  leaf C:N (gC/gN) 
+         
+         biofuel_harvfrac      =>    pftcon%biofuel_harvfrac                           , & ! Input:  cut a fraction of leaf & stem for biofuel (-) 
+                                          
          lflitcn               =>    pftcon%lflitcn                                    , & ! Input:  leaf litter C:N (gC/gN)                           
          frootcn               =>    pftcon%frootcn                                    , & ! Input:  fine root C:N (gC/gN)                             
          graincn               =>    pftcon%graincn                                    , & ! Input:  grain C:N (gC/gN)                                 
@@ -2421,14 +2397,18 @@ contains
          leafc_to_litter       =>    cnveg_carbonflux_inst%leafc_to_litter_patch       , & ! Output: [real(r8) (:) ]  leaf C litterfall (gC/m2/s)                       
          frootc_to_litter      =>    cnveg_carbonflux_inst%frootc_to_litter_patch      , & ! Output: [real(r8) (:) ]  fine root C litterfall (gC/m2/s)                  
          livestemc_to_litter   =>    cnveg_carbonflux_inst%livestemc_to_litter_patch   , & ! Output: [real(r8) (:) ]  live stem C litterfall (gC/m2/s)                  
-         grainc_to_food        =>    cnveg_carbonflux_inst%grainc_to_food_patch        , & ! Output: [real(r8) (:) ]  grain C to food (gC/m2/s)                         
+         grainc_to_food        =>    cnveg_carbonflux_inst%grainc_to_food_patch        , & ! Output: [real(r8) (:) ]  grain C to food (gC/m2/s)             
          grainc_to_seed        =>    cnveg_carbonflux_inst%grainc_to_seed_patch        , & ! Output: [real(r8) (:) ]  grain C to seed (gC/m2/s)
+         leafc_to_biofuelc     =>    cnveg_carbonflux_inst%leafc_to_biofuelc_patch     , & ! Output: [real(r8) (:) ]  leaf C to biofuel C (gC/m2/s)
+         livestemc_to_biofuelc =>    cnveg_carbonflux_inst%livestemc_to_biofuelc_patch , & ! Output: [real(r8) (:) ]  livestem C to biofuel C (gC/m2/s)
          leafn                 =>    cnveg_nitrogenstate_inst%leafn_patch              , & ! Input:  [real(r8) (:) ]  (gN/m2) leaf N      
          frootn                =>    cnveg_nitrogenstate_inst%frootn_patch             , & ! Input:  [real(r8) (:) ]  (gN/m2) fine root N                        
 
          livestemn_to_litter   =>    cnveg_nitrogenflux_inst%livestemn_to_litter_patch , & ! Output: [real(r8) (:) ]  livestem N to litter (gN/m2/s)                    
-         grainn_to_food        =>    cnveg_nitrogenflux_inst%grainn_to_food_patch      , & ! Output: [real(r8) (:) ]  grain N to food (gN/m2/s)                         
+         grainn_to_food        =>    cnveg_nitrogenflux_inst%grainn_to_food_patch      , & ! Output: [real(r8) (:) ]  grain N to food (gN/m2/s)                                   
          grainn_to_seed        =>    cnveg_nitrogenflux_inst%grainn_to_seed_patch      , & ! Output: [real(r8) (:) ]  grain N to seed (gN/m2/s)
+         leafn_to_biofueln     =>    cnveg_nitrogenflux_inst%leafn_to_biofueln_patch   , & ! Output: [real(r8) (:) ]  leaf N to biofuel N (gN/m2/s)
+         livestemn_to_biofueln =>    cnveg_nitrogenflux_inst%livestemn_to_biofueln_patch, & ! Output: [real(r8) (:) ]  livestem N to biofuel N (gN/m2/s)     
          leafn_to_litter       =>    cnveg_nitrogenflux_inst%leafn_to_litter_patch     , & ! Output: [real(r8) (:) ]  leaf N litterfall (gN/m2/s)                       
          leafn_to_retransn     =>    cnveg_nitrogenflux_inst%leafn_to_retransn_patch   , & ! Input: [real(r8) (:) ]  leaf N to retranslocated N pool (gN/m2/s)         
          free_retransn_to_npool=>    cnveg_nitrogenflux_inst%free_retransn_to_npool_patch  , & ! Input: [real(r8) (:) ] free leaf N to retranslocated N pool (gN/m2/s)          
@@ -2449,8 +2429,11 @@ contains
 
             if (offset_counter(p) == dt) then
                t1 = 1.0_r8 / dt
-               leafc_to_litter(p)  = t1 * leafc(p)  + cpool_to_leafc(p)
                frootc_to_litter(p) = t1 * frootc(p) + cpool_to_frootc(p)
+               
+               ! biofuel_harvfrac is only non-zero for prognostic crops.
+               leafc_to_litter(p)  = t1 * leafc(p)*(1._r8-biofuel_harvfrac(ivt(p)))  + cpool_to_leafc(p)
+
                ! this assumes that offset_counter == dt for crops
                ! if this were ever changed, we'd need to add code to the "else"
                if (ivt(p) >= npcropmin) then
@@ -2463,8 +2446,17 @@ contains
                   ! Send the remaining grain to the food product pool
                   grainc_to_food(p) = t1 * grainc(p)  + cpool_to_grainc(p) - grainc_to_seed(p)
                   grainn_to_food(p) = t1 * grainn(p)  + npool_to_grainn(p) - grainn_to_seed(p)
+                  
+                  ! Cut a certain fraction (i.e., biofuel_harvfrac(ivt(p))) (e.g., biofuel_harvfrac(ivt(p)=70% for bioenergy crops) of leaf C
+                  ! and move this fration of leaf C to biofuel C, rather than move it to litter
+                  leafc_to_biofuelc(p) = t1 * leafc(p) * biofuel_harvfrac(ivt(p))
+                  leafn_to_biofueln(p) = t1 * leafn(p) * biofuel_harvfrac(ivt(p))
 
-                  livestemc_to_litter(p) = t1 * livestemc(p)  + cpool_to_livestemc(p)
+                  ! Cut a certain fraction (i.e., biofuel_harvfrac(ivt(p))) (e.g., biofuel_harvfrac(ivt(p)=70% for bioenergy crops) of livestem C
+                  ! and move this fration of leaf C to biofuel C, rather than move it to litter
+                  livestemc_to_litter(p)   = t1 * livestemc(p)*(1._r8-biofuel_harvfrac(ivt(p)))  + cpool_to_livestemc(p)
+                  livestemc_to_biofuelc(p) = t1 * livestemc(p) * biofuel_harvfrac(ivt(p))
+                  livestemn_to_biofueln(p) = t1 * livestemn(p) * biofuel_harvfrac(ivt(p))
                end if
             else
                t1 = dt * 2.0_r8 / (offset_counter(p) * offset_counter(p))
@@ -2546,13 +2538,13 @@ contains
                ! NOTE(slevis, 2014-12) results in -ve livestemn and -ve totpftn
                !X! livestemn_to_litter(p) = livestemc_to_litter(p) / livewdcn(ivt(p))
                ! NOTE(slevis, 2014-12) Beth Drewniak suggested this instead
-               livestemn_to_litter(p) = livestemn(p) / dt
+               livestemn_to_litter(p) = livestemn(p) / dt * (1 - biofuel_harvfrac(ivt(p)))
             end if
 
             ! save the current litterfall fluxes
             prev_leafc_to_litter(p)  = leafc_to_litter(p)
             prev_frootc_to_litter(p) = frootc_to_litter(p)
-
+                
          end if ! end if offset period
 
       end do ! end patch loop
@@ -2801,12 +2793,12 @@ contains
   end subroutine CNLivewoodTurnover
 
   !-----------------------------------------------------------------------
-  subroutine CNGrainToProductPools(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, &
+  subroutine CNCropHarvestToProductPools(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, &
        cnveg_carbonflux_inst, cnveg_nitrogenflux_inst)
     !
     ! !DESCRIPTION:
-    ! If using prognostic crop along with use_grainproduct, then move the patch-level
-    ! grain-to-food fluxes into the column-level grain-to-cropprod fluxes
+    ! If using prognostic crop, then move any necessary harvested amounts into fluxes
+    ! destined for the product pools.
     !
     ! !USES:
     use clm_varctl    , only : use_crop
@@ -2825,21 +2817,28 @@ contains
     ! !LOCAL VARIABLES:
     integer :: fp, p
 
-    character(len=*), parameter :: subname = 'CNGrainToProductPools'
+    character(len=*), parameter :: subname = 'CNCropHarvestToProductPools'
     !-----------------------------------------------------------------------
 
-    ! Explicitly checking use_crop is probably unnecessary here (because presumably
-    ! use_grainproduct is only true if use_crop is true), but we do it for safety because
-    ! the grain*_to_food_patch fluxes are not set if use_crop is false.
-    if (use_crop .and. use_grainproduct) then
+    if (use_crop) then
        do fp = 1, num_soilp
           p = filter_soilp(fp)
-          cnveg_carbonflux_inst%grainc_to_cropprodc_patch(p) = &
-               cnveg_carbonflux_inst%grainc_to_food_patch(p)
-          cnveg_nitrogenflux_inst%grainn_to_cropprodn_patch(p) = &
-               cnveg_nitrogenflux_inst%grainn_to_food_patch(p)
+          cnveg_carbonflux_inst%grainc_to_cropprodc_patch(p) = cnveg_carbonflux_inst%leafc_to_biofuelc_patch(p) + &
+               cnveg_carbonflux_inst%livestemc_to_biofuelc_patch(p)
+          cnveg_nitrogenflux_inst%grainn_to_cropprodn_patch(p) = cnveg_nitrogenflux_inst%leafn_to_biofueln_patch(p) + &
+               cnveg_nitrogenflux_inst%livestemn_to_biofueln_patch(p)
        end do
 
+       if (use_grainproduct) then
+          do fp = 1, num_soilp
+             p = filter_soilp(fp)
+             cnveg_carbonflux_inst%grainc_to_cropprodc_patch(p) = cnveg_carbonflux_inst%grainc_to_cropprodc_patch(p) + &
+                  cnveg_carbonflux_inst%grainc_to_food_patch(p)
+             cnveg_nitrogenflux_inst%grainn_to_cropprodn_patch(p) = cnveg_nitrogenflux_inst%grainn_to_cropprodn_patch(p) + &
+                  cnveg_nitrogenflux_inst%grainn_to_food_patch(p)
+          end do
+       end if
+       
        call p2c (bounds, num_soilc, filter_soilc, &
             cnveg_carbonflux_inst%grainc_to_cropprodc_patch(bounds%begp:bounds%endp), &
             cnveg_carbonflux_inst%grainc_to_cropprodc_col(bounds%begc:bounds%endc))
@@ -2847,12 +2846,10 @@ contains
        call p2c (bounds, num_soilc, filter_soilc, &
             cnveg_nitrogenflux_inst%grainn_to_cropprodn_patch(bounds%begp:bounds%endp), &
             cnveg_nitrogenflux_inst%grainn_to_cropprodn_col(bounds%begc:bounds%endc))
+
     end if
 
-    ! No else clause: if use_grainproduct is false, then the grain*_to_cropprod fluxes
-    ! will remain at their initial value (0).
-
-  end subroutine CNGrainToProductPools
+  end subroutine CNCropHarvestToProductPools
 
   !-----------------------------------------------------------------------
   subroutine CNLitterToColumn (bounds, num_soilc, filter_soilc,         &
@@ -2882,8 +2879,8 @@ contains
     integer :: fc,c,pi,p,j       ! indices
     !-----------------------------------------------------------------------
 
-    SHR_ASSERT_ALL((ubound(leaf_prof_patch)   == (/bounds%endp,nlevdecomp_full/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(froot_prof_patch)  == (/bounds%endp,nlevdecomp_full/)), errMsg(sourcefile, __LINE__))
+    SHR_ASSERT_ALL_FL((ubound(leaf_prof_patch)   == (/bounds%endp,nlevdecomp_full/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(froot_prof_patch)  == (/bounds%endp,nlevdecomp_full/)), sourcefile, __LINE__)
 
     associate(                                                                                & 
          leaf_prof                 => leaf_prof_patch                                       , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves                         
@@ -2902,13 +2899,13 @@ contains
          leafc_to_litter           => cnveg_carbonflux_inst%leafc_to_litter_patch           , & ! Input:  [real(r8) (:)   ]  leaf C litterfall (gC/m2/s)                       
          frootc_to_litter          => cnveg_carbonflux_inst%frootc_to_litter_patch          , & ! Input:  [real(r8) (:)   ]  fine root N litterfall (gN/m2/s)                  
          livestemc_to_litter       => cnveg_carbonflux_inst%livestemc_to_litter_patch       , & ! Input:  [real(r8) (:)   ]  live stem C litterfall (gC/m2/s)                  
-         grainc_to_food            => cnveg_carbonflux_inst%grainc_to_food_patch            , & ! Input:  [real(r8) (:)   ]  grain C to food (gC/m2/s)                         
+         grainc_to_food            => cnveg_carbonflux_inst%grainc_to_food_patch            , & ! Input:  [real(r8) (:)   ]  grain C to food (gC/m2/s)                            
          phenology_c_to_litr_met_c => cnveg_carbonflux_inst%phenology_c_to_litr_met_c_col   , & ! Output: [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter metabolic pool (gC/m3/s)
          phenology_c_to_litr_cel_c => cnveg_carbonflux_inst%phenology_c_to_litr_cel_c_col   , & ! Output: [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter cellulose pool (gC/m3/s)
          phenology_c_to_litr_lig_c => cnveg_carbonflux_inst%phenology_c_to_litr_lig_c_col   , & ! Output: [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter lignin pool (gC/m3/s)
 
          livestemn_to_litter       => cnveg_nitrogenflux_inst%livestemn_to_litter_patch     , & ! Input:  [real(r8) (:)   ]  livestem N to litter (gN/m2/s)                    
-         grainn_to_food            => cnveg_nitrogenflux_inst%grainn_to_food_patch          , & ! Input:  [real(r8) (:)   ]  grain N to food (gN/m2/s)                         
+         grainn_to_food            => cnveg_nitrogenflux_inst%grainn_to_food_patch          , & ! Input:  [real(r8) (:)   ]  grain N to food (gN/m2/s) 
          leafn_to_litter           => cnveg_nitrogenflux_inst%leafn_to_litter_patch         , & ! Input:  [real(r8) (:)   ]  leaf N litterfall (gN/m2/s)                       
          frootn_to_litter          => cnveg_nitrogenflux_inst%frootn_to_litter_patch        , & ! Input:  [real(r8) (:)   ]  fine root N litterfall (gN/m2/s)                  
          phenology_n_to_litr_met_n => cnveg_nitrogenflux_inst%phenology_n_to_litr_met_n_col , & ! Output: [real(r8) (:,:) ]  N fluxes associated with phenology (litterfall and crop) to litter metabolic pool (gN/m3/s)

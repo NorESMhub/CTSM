@@ -1,20 +1,58 @@
-# Branches in NorESMhub/CTSM
+# CTSM
 
-This repository has the following CTSM branches intended to facilitate working with NorESM2:
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3739617.svg)](https://doi.org/10.5281/zenodo.3739617)
 
-- **master** - keep track with the master branch of [ESCOMP/CTSM](https://github.com/ESCOMP/CTSM).
-  - This branch is used by [NorESMhub/NorESM_LandSites_Platform](https://github.com/NorESMhub/NorESM_LandSites_Platform)
-  - This branch can be used for running the most recent version of [FATES](https://github.com/NGEET/fates)
+## Overview and resources
 
-- **release-clm5.0.14-Nor** - The working branch used by NorESM2. Non-answer changing (with respect to NorESM2s CMIP6 version) pull requests should be sent to this branch. For other changes, new branches discuss with CTSM and NorESM core teams.
-  - Tags in this branch help identifying the link to the NorESM2 releases:
-    - release-clm5.0.14-Nor_v1.0.2 - the tag working with NorESM2 noresm2 tags: release-noresm2.0.4, release-noresm2.0.3
-    - release-clm5.0.14-Nor_v1.0.1 - the tag working with NorESM2 tags: release-noresm2.0.2 
-    - release-clm5.0.14-Nor_v1.0.0 - the tag working with NorESM2 tags: release-noresm2.0.1, release-noresm2.0.0 
+The Community Terrestrial Systems Model.
 
-- **clm-Nor-dev** - The development branch for new CTSM features in NorESM, originates from NorESM2.0.x.  Developments are allowed to be answer changing, and pull requests can be sent to this branch.
+This includes the Community Land Model (CLM5.0 and CLM4.5) of the Community Earth System Model.
 
-- **release-cesm2.2** - Copy of ESCOMP branch, base for release-cesm2.2.01-Nor branch.
-- **release-cesm2.2.01-Nor** - The branch used for the next phase of NorESM2 (under development).
+For documentation, quick start, diagnostics, model output and
+references, see
 
-- If you have problems with using this repository, please use [issue](https://github.com/NorESMhub/CTSM/issues) to send your questions.
+http://www.cesm.ucar.edu/models/cesm2.0/land/
+
+and
+
+https://escomp.github.io/ctsm-docs/
+
+For help with how to work with CTSM in git, see
+
+https://github.com/ESCOMP/CTSM/wiki/Quick-start-to-CTSM-development-with-git
+
+and
+
+https://github.com/ESCOMP/ctsm/wiki/Recommended-git-setup
+
+For support with model use, troubleshooting, etc., please use the CTSM forum (or other
+appropriate forum) here:
+
+https://xenforo.cgd.ucar.edu/cesm/
+
+To get updates on CTSM tags and important notes on CTSM developments
+join our low traffic email list:
+
+https://groups.google.com/a/ucar.edu/forum/#!forum/ctsm-dev
+
+(Send email to ctsm-software@ucar.edu if you have problems with any of this)
+
+## CTSM code management team
+
+CTSM code management is provided primarily by:
+
+Software engineering team:
+- [Erik Kluzek](https://github.com/ekluzek)
+- [Bill Sacks](https://github.com/billsacks)
+- [Mariana Vertenstein](https://github.com/mvertens)
+- [Negin Sobhani](https://github.com/negin513)
+- [Sam Levis](https://github.com/slevisconsulting)
+
+Science team:
+- [Dave Lawrence](https://github.com/dlawrenncar)
+- [Will Wieder](https://github.com/wwieder)
+- [Danica Lombardozzi](https://github.com/danicalombardozzi)
+- [Keith Oleson](https://github.com/olyson)
+- [Sean Swenson](https://github.com/swensosc)
+- [Mike Barlage](https://github.com/barlage)
+- [Rosie Fisher](https://github.com/rosiealice)

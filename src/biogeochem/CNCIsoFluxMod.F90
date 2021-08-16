@@ -7,7 +7,7 @@ module CNCIsoFluxMod
   use shr_kind_mod                       , only : r8 => shr_kind_r8
   use shr_log_mod                        , only : errMsg => shr_log_errMsg
   use clm_varpar                         , only : ndecomp_cascade_transitions, nlevdecomp, ndecomp_pools
-  use clm_varpar                         , only : max_patch_per_col, maxpatch_pft
+  use clm_varpar                         , only : max_patch_per_col, maxsoil_patches
   use abortutils                         , only : endrun
   use pftconMod                          , only : pftcon
   use CNVegCarbonStateType               , only : cnveg_carbonstate_type
@@ -405,6 +405,16 @@ contains
               num_soilp                                        , filter_soilp, 1._r8, 0, isotope)
 
          call CIsoFluxCalc(&
+              iso_cnveg_cf%leafc_to_biofuelc_patch             , cnveg_cf%leafc_to_biofuelc_patch, &
+              iso_cnveg_cs%leafc_patch                         , cnveg_cs%leafc_patch, &
+              num_soilp                                        , filter_soilp, 1._r8, 0, isotope) 
+
+         call CIsoFluxCalc(&
+              iso_cnveg_cf%livestemc_to_biofuelc_patch         , cnveg_cf%livestemc_to_biofuelc_patch, &
+              iso_cnveg_cs%livestemc_patch                     , cnveg_cs%livestemc_patch, &
+              num_soilp                                        , filter_soilp, 1._r8, 0, isotope) 
+
+         call CIsoFluxCalc(&
               iso_cnveg_cf%grainc_to_seed_patch                , cnveg_cf%grainc_to_seed_patch, &
               iso_cnveg_cs%grainc_patch                        , cnveg_cs%grainc_patch, &
               num_soilp                                        , filter_soilp, 1._r8, 0, isotope)
@@ -459,10 +469,17 @@ contains
               iso_cnveg_cs%livestemc_patch                     , cnveg_cs%livestemc_patch, &
               num_soilp                                        , filter_soilp, 1._r8, 0, isotope)
 
+         do fp = 1,num_soilp
+            p = filter_soilp(fp)
+            iso_cnveg_cf%grainc_to_cropprodc_patch(p) = iso_cnveg_cf%leafc_to_biofuelc_patch(p) + &
+                 iso_cnveg_cf%livestemc_to_biofuelc_patch(p)
+         end do
+
          if (use_grainproduct) then
             do fp = 1,num_soilp
                p = filter_soilp(fp)
-               iso_cnveg_cf%grainc_to_cropprodc_patch(p) = iso_cnveg_cf%grainc_to_food_patch(p)
+               iso_cnveg_cf%grainc_to_cropprodc_patch(p) = iso_cnveg_cf%grainc_to_cropprodc_patch(p) + &
+                    iso_cnveg_cf%grainc_to_food_patch(p)
                iso_cnveg_cf%grain_mr_patch(p) = iso_cnveg_cf%grain_xsmr_patch(p) + iso_cnveg_cf%grain_curmr_patch(p)
             end do
          endif
@@ -1319,7 +1336,7 @@ contains
           )
           
        do j = 1, nlevdecomp
-          do pi = 1,maxpatch_pft
+          do pi = 1,maxsoil_patches
              do fc = 1,num_soilc
                 c = filter_soilc(fc)
 
@@ -1460,7 +1477,7 @@ contains
           )
 
        do j = 1, nlevdecomp
-          do pi = 1,maxpatch_pft
+          do pi = 1,maxsoil_patches
              do fc = 1,num_soilc
                 c = filter_soilc(fc)
                 
@@ -1532,7 +1549,7 @@ contains
           end do
        end do
 
-       do pi = 1,maxpatch_pft
+       do pi = 1,maxsoil_patches
           do fc = 1,num_soilc
              c = filter_soilc(fc)
              if (pi <=  col%npatches(c)) then

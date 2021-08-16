@@ -24,8 +24,8 @@ module  PhotosynthesisMod
   use CIsoAtmTimeseriesMod, only : C14BombSpike, use_c14_bombspike, C13TimeSeries, use_c13_timeseries, nsectors_c14
   use atm2lndType         , only : atm2lnd_type
   use CanopyStateType     , only : canopystate_type
-  use WaterStateType      , only : waterstate_type
-  use WaterfluxType       , only : waterflux_type
+  use WaterDiagnosticBulkType      , only : waterdiagnosticbulk_type
+  use WaterFluxBulkType       , only : waterfluxbulk_type
   use SoilStateType       , only : soilstate_type
   use TemperatureType     , only : temperature_type
   use SolarAbsorbedType   , only : solarabs_type
@@ -80,12 +80,34 @@ module  PhotosynthesisMod
   ! !PUBLIC VARIABLES:
 
   type :: photo_params_type
+     real(r8) :: act25  ! Rubisco activity at 25 C (umol CO2/gRubisco/s)
+     real(r8) :: fnr  ! Mass ratio of total Rubisco molecular mass to nitrogen in Rubisco (gRubisco/gN in Rubisco)
+     real(r8) :: cp25_yr2000  ! CO2 compensation point at 25°C at present day O2 (mol/mol)
+     real(r8) :: kc25_coef  ! Michaelis-Menten const. at 25°C for CO2 (unitless)
+     real(r8) :: ko25_coef  ! Michaelis-Menten const. at 25°C for O2 (unitless)
+     real(r8) :: fnps       ! Fraction of light absorbed by non-photosynthetic pigment (unitless)
+     real(r8) :: theta_psii ! Empirical curvature parameter for electron transport rate (unitless)
+     real(r8) :: theta_ip   ! Empirical curvature parameter for ap photosynthesis co-limitation (unitless)
+     real(r8) :: vcmaxha    ! Activation energy for vcmax (J/mol)
+     real(r8) :: jmaxha     ! Activation energy for jmax (J/mol)
+     real(r8) :: tpuha      ! Activation energy for tpu (J/mol)
+     real(r8) :: lmrha      ! Activation energy for lmr (J/mol)
+     real(r8) :: kcha       ! Activation energy for kc (J/mol)
+     real(r8) :: koha       ! Activation energy for ko (J/mol)
+     real(r8) :: cpha       ! Activation energy for cp (J/mol)
+     real(r8) :: vcmaxhd    ! Deactivation energy for vcmax (J/mol)
+     real(r8) :: jmaxhd     ! Deactivation energy for jmax (J/mol)
+     real(r8) :: tpuhd      ! Deactivation energy for tpu (J/mol)
+     real(r8) :: lmrhd      ! Deactivation energy for lmr (J/mol)
+     real(r8) :: lmrse      ! Entropy term for lmr (J/mol/K)
+     real(r8) :: tpu25ratio ! Ratio of tpu25top to vcmax25top (unitless)
+     real(r8) :: kp25ratio  ! Ratio of kp25top to vcmax25top (unitless)
      real(r8), allocatable, public  :: krmax              (:)
      real(r8), allocatable, private :: kmax               (:,:)
      real(r8), allocatable, private :: psi50              (:,:)
      real(r8), allocatable, private :: ck                 (:,:)
-     real(r8), allocatable, public  :: psi_soil_ref       (:)
      real(r8), allocatable, private :: lmr_intercept_atkin(:)
+     real(r8), allocatable, private :: theta_cj           (:) ! Empirical curvature parameter for ac, aj photosynthesis co-limitation (unitless)
   contains
      procedure, private :: allocParams
   end type photo_params_type
@@ -121,7 +143,6 @@ module  PhotosynthesisMod
      real(r8), pointer, private :: qe_patch          (:)   ! patch quantum efficiency, used only for C4 (mol CO2 / mol photons)
      real(r8), pointer, private :: tpu_z_patch       (:,:) ! patch triose phosphate utilization rate (umol CO2/m**2/s)
      real(r8), pointer, private :: kp_z_patch        (:,:) ! patch initial slope of CO2 response curve (C4 plants)
-     real(r8), pointer, private :: theta_cj_patch    (:)   ! patch empirical curvature parameter for ac, aj photosynthesis co-limitation
      real(r8), pointer, private :: bbb_patch         (:)   ! patch Ball-Berry minimum leaf conductance (umol H2O/m**2/s)
      real(r8), pointer, private :: mbb_patch         (:)   ! patch Ball-Berry slope of conductance-photosynthesis relationship
      real(r8), pointer, private :: gs_mol_patch      (:,:) ! patch leaf stomatal conductance       (umol H2O/m**2/s)
@@ -179,6 +200,8 @@ module  PhotosynthesisMod
      ! LUNA specific variables
      real(r8), pointer, public  :: vcmx25_z_patch    (:,:) ! patch  leaf Vc,max25 (umol CO2/m**2/s) for canopy layer 
      real(r8), pointer, public  :: jmx25_z_patch     (:,:) ! patch  leaf Jmax25 (umol electron/m**2/s) for canopy layer 
+     real(r8), pointer, public  :: vcmx_prevyr       (:,:) ! patch  leaf Vc,max25 previous year running avg
+     real(r8), pointer, public  :: jmx_prevyr       (:,:) ! patch  leaf Jmax25 previous year running avg
      real(r8), pointer, public  :: pnlc_z_patch      (:,:) ! patch proportion of leaf nitrogen allocated for light capture for canopy layer
      real(r8), pointer, public  :: enzs_z_patch      (:,:) ! enzyme decay status 1.0-fully active; 0-all decayed during stress
      real(r8), pointer, public  :: fpsn24_patch      (:)   ! 24 hour mean patch photosynthesis (umol CO2/m**2 ground/day)
@@ -266,7 +289,6 @@ contains
     allocate(this%kc_patch          (begp:endp))           ; this%kc_patch          (:)   = nan
     allocate(this%ko_patch          (begp:endp))           ; this%ko_patch          (:)   = nan
     allocate(this%qe_patch          (begp:endp))           ; this%qe_patch          (:)   = nan
-    allocate(this%theta_cj_patch    (begp:endp))           ; this%theta_cj_patch    (:)   = nan
     allocate(this%bbb_patch         (begp:endp))           ; this%bbb_patch         (:)   = nan
     allocate(this%mbb_patch         (begp:endp))           ; this%mbb_patch         (:)   = nan
     allocate(this%gb_mol_patch      (begp:endp))           ; this%gb_mol_patch      (:)   = nan
@@ -324,6 +346,8 @@ contains
       ! statements.
       allocate(this%vcmx25_z_patch  (begp:endp,1:nlevcan)) ; this%vcmx25_z_patch    (:,:) = 30._r8
       allocate(this%jmx25_z_patch   (begp:endp,1:nlevcan)) ; this%jmx25_z_patch     (:,:) = 60._r8 
+      allocate(this%vcmx_prevyr     (begp:endp,1:nlevcan)) ; this%vcmx_prevyr       (:,:) = 85._r8
+      allocate(this%jmx_prevyr      (begp:endp,1:nlevcan)) ; this%jmx_prevyr        (:,:) = 50._r8
       allocate(this%pnlc_z_patch    (begp:endp,1:nlevcan)) ; this%pnlc_z_patch      (:,:) = 0.01_r8
       allocate(this%fpsn24_patch    (begp:endp))           ; this%fpsn24_patch      (:)   = nan
       allocate(this%enzs_z_patch    (begp:endp,1:nlevcan)) ; this%enzs_z_patch      (:,:) = 1._r8
@@ -360,14 +384,14 @@ contains
     ! Don't output photosynthesis variables when FATES is on as they aren't calculated
     if (.not. use_fates) then
        this%fpsn_patch(begp:endp) = spval
-       call hist_addfld1d (fname='FPSN', units='umol/m2s',  &
+       call hist_addfld1d (fname='FPSN', units='umol m-2 s-1',  &
             avgflag='A', long_name='photosynthesis', &
             ptr_patch=this%fpsn_patch, set_lake=0._r8, set_urb=0._r8)
 
        ! Don't by default output this rate limiting step as only makes sense if you are outputing
        ! the others each time-step
        this%fpsn_wc_patch(begp:endp) = spval
-       call hist_addfld1d (fname='FPSN_WC', units='umol/m2s',  &
+       call hist_addfld1d (fname='FPSN_WC', units='umol m-2 s-1',  &
             avgflag='I', long_name='Rubisco-limited photosynthesis', &
             ptr_patch=this%fpsn_wc_patch, set_lake=0._r8, set_urb=0._r8, &
             default='inactive')
@@ -375,7 +399,7 @@ contains
        ! Don't by default output this rate limiting step as only makes sense if you are outputing
        ! the others each time-step
        this%fpsn_wj_patch(begp:endp) = spval
-       call hist_addfld1d (fname='FPSN_WJ', units='umol/m2s',  &
+       call hist_addfld1d (fname='FPSN_WJ', units='umol m-2 s-1',  &
             avgflag='I', long_name='RuBP-limited photosynthesis', &
             ptr_patch=this%fpsn_wj_patch, set_lake=0._r8, set_urb=0._r8, &
             default='inactive')
@@ -383,7 +407,7 @@ contains
        ! Don't by default output this rate limiting step as only makes sense if you are outputing
        ! the others each time-step
        this%fpsn_wp_patch(begp:endp) = spval
-       call hist_addfld1d (fname='FPSN_WP', units='umol/m2s',  &
+       call hist_addfld1d (fname='FPSN_WP', units='umol m-2 s-1',  &
             avgflag='I', long_name='Product-limited photosynthesis', &
             ptr_patch=this%fpsn_wp_patch, set_lake=0._r8, set_urb=0._r8, &
             default='inactive')
@@ -459,12 +483,12 @@ contains
     this%rssun_patch(begp:endp) = spval
     call hist_addfld1d (fname='RSSUN', units='s/m',  &
          avgflag='M', long_name='sunlit leaf stomatal resistance', &
-         ptr_patch=this%rssun_patch, set_lake=spval, set_urb=spval)
+         ptr_patch=this%rssun_patch, l2g_scale_type='veg')
 
     this%rssha_patch(begp:endp) = spval
     call hist_addfld1d (fname='RSSHA', units='s/m',  &
          avgflag='M', long_name='shaded leaf stomatal resistance', &
-         ptr_patch=this%rssha_patch, set_lake=spval, set_urb=spval)
+         ptr_patch=this%rssha_patch, l2g_scale_type='veg')
 
     this%gs_mol_sun_patch(begp:endp,:) = spval
     this%gs_mol_sha_patch(begp:endp,:) = spval
@@ -610,10 +634,10 @@ contains
     ! allocate parameters
 
     allocate( this%krmax       (0:mxpft) )          ; this%krmax(:)        = nan
+    allocate( this%theta_cj    (0:mxpft) )          ; this%theta_cj(:)     = nan
     allocate( this%kmax        (0:mxpft,nvegwcs) )  ; this%kmax(:,:)       = nan
     allocate( this%psi50       (0:mxpft,nvegwcs) )  ; this%psi50(:,:)      = nan
     allocate( this%ck          (0:mxpft,nvegwcs) )  ; this%ck(:,:)         = nan
-    allocate( this%psi_soil_ref(0:mxpft) )          ; this%psi_soil_ref(:) = nan
 
     if ( use_hydrstress .and. nvegwcs /= 4 )then
        call endrun(msg='Error:: the Plant Hydraulics Stress methodology is for the spacA function is hardcoded for nvegwcs==4' &
@@ -627,6 +651,7 @@ contains
     !
     ! !USES:
     use ncdio_pio , only : file_desc_t,ncd_io
+    use paramUtilMod, only: readNcdioScalar
     implicit none
 
     ! !ARGUMENTS:
@@ -651,14 +676,14 @@ contains
     call ncd_io(varname=trim(tString),data=temp1d, flag='read', ncid=ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
     params_inst%krmax=temp1d
-    tString = "psi_soil_ref"
-    call ncd_io(varname=trim(tString),data=temp1d, flag='read', ncid=ncid, readvar=readv)
-    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
-    params_inst%psi_soil_ref=temp1d
     tString = "lmr_intercept_atkin"
     call ncd_io(varname=trim(tString),data=temp1d, flag='read', ncid=ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
     params_inst%lmr_intercept_atkin=temp1d
+    tString = "theta_cj"
+    call ncd_io(varname=trim(tString),data=temp1d, flag='read', ncid=ncid, readvar=readv)
+    if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
+    params_inst%theta_cj=temp1d
     tString = "kmax"
     call ncd_io(varname=trim(tString),data=temp2d, flag='read', ncid=ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
@@ -671,6 +696,53 @@ contains
     call ncd_io(varname=trim(tString),data=temp2d, flag='read', ncid=ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(sourcefile, __LINE__))
     params_inst%ck=temp2d
+
+    ! read in the scalar parameters
+
+    ! Michaelis-Menten constant at 25°C for O2 (unitless)
+    call readNcdioScalar(ncid, 'ko25_coef', subname, params_inst%ko25_coef)
+    ! Michaelis-Menten constant at 25°C for CO2 (unitless)
+    call readNcdioScalar(ncid, 'kc25_coef', subname, params_inst%kc25_coef)
+    ! CO2 compensation point at 25°C at present day O2 levels
+    call readNcdioScalar(ncid, 'cp25_yr2000', subname, params_inst%cp25_yr2000)
+    ! Rubisco activity at 25 C (umol CO2/gRubisco/s)
+    call readNcdioScalar(ncid, 'act25', subname, params_inst%act25)
+    ! Mass ratio of total Rubisco molecular mass to nitrogen in Rubisco (gRubisco/gN(Rubisco))
+    call readNcdioScalar(ncid, 'fnr', subname, params_inst%fnr)
+    ! Fraction of light absorbed by non-photosynthetic pigment (unitless)
+    call readNcdioScalar(ncid, 'fnps', subname, params_inst%fnps)
+    ! Empirical curvature parameter for electron transport rate (unitless)
+    call readNcdioScalar(ncid, 'theta_psii', subname, params_inst%theta_psii)
+    ! Empirical curvature parameter for ap photosynthesis co-limitation (unitless)
+    call readNcdioScalar(ncid, 'theta_ip', subname, params_inst%theta_ip)
+    ! Activation energy for vcmax (J/mol)
+    call readNcdioScalar(ncid, 'vcmaxha', subname, params_inst%vcmaxha)
+    ! Activation energy for jmax (J/mol)
+    call readNcdioScalar(ncid, 'jmaxha', subname, params_inst%jmaxha)
+    ! Activation energy for tpu (J/mol)
+    call readNcdioScalar(ncid, 'tpuha', subname, params_inst%tpuha)
+    ! Activation energy for lmr (J/mol)
+    call readNcdioScalar(ncid, 'lmrha', subname, params_inst%lmrha)
+    ! Activation energy for kc (J/mol)
+    call readNcdioScalar(ncid, 'kcha', subname, params_inst%kcha)
+    ! Activation energy for ko (J/mol)
+    call readNcdioScalar(ncid, 'koha', subname, params_inst%koha)
+    ! Activation energy for cp (J/mol)
+    call readNcdioScalar(ncid, 'cpha', subname, params_inst%cpha)
+    ! Deactivation energy for vcmax (J/mol)
+    call readNcdioScalar(ncid, 'vcmaxhd', subname, params_inst%vcmaxhd)
+    ! Deactivation energy for jmax (J/mol)
+    call readNcdioScalar(ncid, 'jmaxhd', subname, params_inst%jmaxhd)
+    ! Deactivation energy for tpu (J/mol)
+    call readNcdioScalar(ncid, 'tpuhd', subname, params_inst%tpuhd)
+    ! Deactivation energy for lmr (J/mol)
+    call readNcdioScalar(ncid, 'lmrhd', subname, params_inst%lmrhd)
+    ! Entropy term for lmr (J/mol/K)
+    call readNcdioScalar(ncid, 'lmrse', subname, params_inst%lmrse)
+    ! Ratio of tpu25top to vcmax25top (unitless)
+    call readNcdioScalar(ncid, 'tpu25ratio', subname, params_inst%tpu25ratio)
+    ! Ratio of kp25top to vcmax25top (unitless)
+    call readNcdioScalar(ncid, 'kp25ratio', subname, params_inst%kp25ratio)
 
   end subroutine readParams
 
@@ -820,6 +892,14 @@ contains
          dim1name='pft', dim2name='levcan', switchdim=.true., &
          long_name='Maximum carboxylation rate at 25 celcius for canopy layers', units='umol CO2/m**2/s', &
          interpinic_flag='interp', readvar=readvar, data=this%jmx25_z_patch)
+      call restartvar(ncid=ncid, flag=flag, varname='vcmx_prevyr', xtype=ncd_double,  &
+         dim1name='pft', dim2name='levcan', switchdim=.true., &
+         long_name='avg carboxylation rate at 25 celsius for canopy layers', units='umol CO2/m**2/s', &
+         interpinic_flag='interp', readvar=readvar, data=this%vcmx_prevyr)
+      call restartvar(ncid=ncid, flag=flag, varname='jmx_prevyr', xtype=ncd_double,  &
+         dim1name='pft', dim2name='levcan', switchdim=.true., &
+         long_name='avg carboxylation rate at 25 celsius for canopy layers', units='umol CO2/m**2/s', &
+         interpinic_flag='interp', readvar=readvar, data=this%jmx_prevyr)
       call restartvar(ncid=ncid, flag=flag, varname='pnlc_z', xtype=ncd_double,  &
          dim1name='pft', dim2name='levcan', switchdim=.true., &
          long_name='proportion of leaf nitrogen allocated for light capture', units='unitless', &
@@ -957,7 +1037,7 @@ contains
     ! !USES:
     use clm_varcon        , only : rgas, tfrz, spval
     use GridcellType      , only : grc
-    use clm_time_manager  , only : get_step_size, is_near_local_noon
+    use clm_time_manager  , only : get_step_size_real, is_near_local_noon
     use clm_varctl     , only : cnallocate_carbon_only
     use clm_varctl     , only : lnc_opt, reduce_dayl_factor, vcmax_opt    
     use pftconMod      , only : nbrdlf_dcd_tmp_shrub, npcropmin
@@ -1007,33 +1087,14 @@ contains
     real(r8) :: ko25           ! Michaelis-Menten constant for O2 at 25C (Pa)
     real(r8) :: cp25           ! CO2 compensation point at 25C (Pa)
 
-    real(r8) :: vcmaxha        ! activation energy for vcmax (J/mol)
-    real(r8) :: jmaxha         ! activation energy for jmax (J/mol)
-    real(r8) :: tpuha          ! activation energy for tpu (J/mol)
-    real(r8) :: lmrha          ! activation energy for lmr (J/mol)
-    real(r8) :: kcha           ! activation energy for kc (J/mol)
-    real(r8) :: koha           ! activation energy for ko (J/mol)
-    real(r8) :: cpha           ! activation energy for cp (J/mol)
-
-    real(r8) :: vcmaxhd        ! deactivation energy for vcmax (J/mol)
-    real(r8) :: jmaxhd         ! deactivation energy for jmax (J/mol)
-    real(r8) :: tpuhd          ! deactivation energy for tpu (J/mol)
-    real(r8) :: lmrhd          ! deactivation energy for lmr (J/mol)
-
     real(r8) :: vcmaxse        ! entropy term for vcmax (J/mol/K)
     real(r8) :: jmaxse         ! entropy term for jmax (J/mol/K)
     real(r8) :: tpuse          ! entropy term for tpu (J/mol/K)
-    real(r8) :: lmrse          ! entropy term for lmr (J/mol/K)
 
     real(r8) :: vcmaxc         ! scaling factor for high temperature inhibition (25 C = 1.0)
     real(r8) :: jmaxc          ! scaling factor for high temperature inhibition (25 C = 1.0)
     real(r8) :: tpuc           ! scaling factor for high temperature inhibition (25 C = 1.0)
     real(r8) :: lmrc           ! scaling factor for high temperature inhibition (25 C = 1.0)
-
-    real(r8) :: fnps           ! fraction of light absorbed by non-photosynthetic pigments
-    real(r8) :: theta_psii     ! empirical curvature parameter for electron transport rate
-
-    real(r8) :: theta_ip          ! empirical curvature parameter for ap photosynthesis co-limitation
 
     ! Other
     integer  :: f,p,c,iv          ! indices
@@ -1059,8 +1120,6 @@ contains
     real(r8) :: aquad,bquad,cquad ! terms for quadratic equations
     real(r8) :: r1,r2             ! roots of quadratic equation
     real(r8) :: ceair             ! vapor pressure of air, constrained (Pa)
-    real(r8) :: fnr               ! (gRubisco/gN in Rubisco)
-    real(r8) :: act25             ! (umol/mgRubisco/min) Rubisco activity at 25 C
     integer  :: niter             ! iteration loop index
     real(r8) :: nscaler           ! leaf nitrogen scaling coefficient
 
@@ -1113,14 +1172,14 @@ contains
 
     ! Enforce expected array sizes
 
-    SHR_ASSERT_ALL((ubound(esat_tv)     == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(eair)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(oair)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(cair)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(rb)          == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(btran)       == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(dayl_factor) == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(leafn)       == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
+    SHR_ASSERT_ALL_FL((ubound(esat_tv)     == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(eair)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(oair)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(cair)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(rb)          == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(btran)       == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(dayl_factor) == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(leafn)       == (/bounds%endp/)), sourcefile, __LINE__)
 
     associate(                                                 &
          c3psn      => pftcon%c3psn                          , & ! Input:  photosynthetic pathway: 0. = c4, 1. = c3
@@ -1162,7 +1221,6 @@ contains
          qe         => photosyns_inst%qe_patch               , & ! Output: [real(r8) (:)   ]  quantum efficiency, used only for C4 (mol CO2 / mol photons)
          tpu_z      => photosyns_inst%tpu_z_patch            , & ! Output: [real(r8) (:,:) ]  triose phosphate utilization rate (umol CO2/m**2/s)
          kp_z       => photosyns_inst%kp_z_patch             , & ! Output: [real(r8) (:,:) ]  initial slope of CO2 response curve (C4 plants)
-         theta_cj   => photosyns_inst%theta_cj_patch         , & ! Output: [real(r8) (:)   ]  empirical curvature parameter for ac, aj photosynthesis co-limitation
          bbb        => photosyns_inst%bbb_patch              , & ! Output: [real(r8) (:)   ]  Ball-Berry minimum leaf conductance (umol H2O/m**2/s)
          mbb        => photosyns_inst%mbb_patch              , & ! Output: [real(r8) (:)   ]  Ball-Berry slope of conductance-photosynthesis relationship
          rh_leaf    => photosyns_inst%rh_leaf_patch          , & ! Output: [real(r8) (:)   ]  fractional humidity at leaf surface (dimensionless)
@@ -1216,44 +1274,20 @@ contains
 
       ! Determine seconds of current time step
 
-      dtime = get_step_size()
-
-      ! vcmax25 parameters, from CN
-
-      fnr = 7.16_r8
-      act25 = 3.6_r8   !umol/mgRubisco/min
-      ! Convert rubisco activity units from umol/mgRubisco/min -> umol/gRubisco/s
-      act25 = act25 * 1000.0_r8 / 60.0_r8
+      dtime = get_step_size_real()
 
       ! Activation energy, from:
       ! Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
       ! Bernacchi et al (2003) Plant, Cell and Environment 26:1419-1430
       ! except TPU from: Harley et al (1992) Plant, Cell and Environment 15:271-282
 
-      kcha    = 79430._r8
-      koha    = 36380._r8
-      cpha    = 37830._r8
-      vcmaxha = 72000._r8
-      jmaxha  = 50000._r8
-      tpuha   = 72000._r8
-      lmrha   = 46390._r8
-
       ! High temperature deactivation, from:
       ! Leuning (2002) Plant, Cell and Environment 25:1205-1210
       ! The factor "c" scales the deactivation to a value of 1.0 at 25C
 
-      vcmaxhd = 200000._r8
-      jmaxhd  = 200000._r8
-      tpuhd   = 200000._r8
-      lmrhd   = 150650._r8
-      lmrse   = 490._r8
-      lmrc    = fth25 (lmrhd, lmrse)
+      lmrc    = fth25 (params_inst%lmrhd, params_inst%lmrse)
 
       ! Miscellaneous parameters, from Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593
-
-      fnps = 0.15_r8
-      theta_psii = 0.7_r8
-      theta_ip = 0.95_r8
 
       do f = 1, fn
          p = filterp(f)
@@ -1271,11 +1305,9 @@ contains
 
          if (c3flag(p)) then
             qe(p) = 0._r8
-            theta_cj(p) = 0.98_r8
             bbbopt(p) = 10000._r8
          else
             qe(p) = 0.05_r8
-            theta_cj(p) = 0.80_r8
             bbbopt(p) = 40000._r8
          end if
 
@@ -1286,22 +1318,22 @@ contains
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
          !
-         !       kc25 = 404.9 umol/mol
-         !       ko25 = 278.4 mmol/mol
-         !       cp25 = 42.75 umol/mol
+         !       kc25_coef = 404.9e-6 mol/mol
+         !       ko25_coef = 278.4e-3 mol/mol
+         !       cp25_yr2000 = 42.75e-6 mol/mol
          !
          ! Derive sco from cp and O2 using present-day O2 (0.209 mol/mol) and re-calculate
          ! cp to account for variation in O2 using cp = 0.5 O2 / sco
          !
 
-         kc25 = (404.9_r8 / 1.e06_r8) * forc_pbot(c)
-         ko25 = (278.4_r8 / 1.e03_r8) * forc_pbot(c)
-         sco  = 0.5_r8 * 0.209_r8 / (42.75_r8 / 1.e06_r8)
+         kc25 = params_inst%kc25_coef * forc_pbot(c)
+         ko25 = params_inst%ko25_coef * forc_pbot(c)
+         sco  = 0.5_r8 * 0.209_r8 / params_inst%cp25_yr2000
          cp25 = 0.5_r8 * oair(p) / sco
 
-         kc(p) = kc25 * ft(t_veg(p), kcha)
-         ko(p) = ko25 * ft(t_veg(p), koha)
-         cp(p) = cp25 * ft(t_veg(p), cpha)
+         kc(p) = kc25 * ft(t_veg(p), params_inst%kcha)
+         ko(p) = ko25 * ft(t_veg(p), params_inst%koha)
+         cp(p) = cp25 * ft(t_veg(p), params_inst%cpha)
 
       end do
 
@@ -1375,7 +1407,7 @@ contains
          ! Default
          if (vcmax_opt == 0) then                                                   
             ! vcmax25 at canopy top, as in CN but using lnc at top of the canopy
-            vcmax25top = lnc(p) * flnr(patch%itype(p)) * fnr * act25 * dayl_factor(p)
+            vcmax25top = lnc(p) * flnr(patch%itype(p)) * params_inst%fnr * params_inst%act25 * dayl_factor(p)
             if (.not. use_cn) then
                vcmax25top = vcmax25top * fnitr(patch%itype(p))
             else
@@ -1387,11 +1419,11 @@ contains
             nptreemax = 9  ! is this number correct? check later 
             if (patch%itype(p) >= nptreemax) then   ! if not tree 
                ! for shrubs and herbs 
-               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) + s_flnr(patch%itype(p)) * lnc(p) ) * fnr * act25 * &
+               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) + s_flnr(patch%itype(p)) * lnc(p) ) * params_inst%fnr * params_inst%act25 * &
                     dayl_factor(p)
             else
                ! if tree 
-               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) * exp(s_flnr(patch%itype(p)) * lnc(p)) ) * fnr * act25 * &
+               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) * exp(s_flnr(patch%itype(p)) * lnc(p)) ) * params_inst%fnr * params_inst%act25 * &
                     dayl_factor(p)
                ! for trees 
             end if     
@@ -1402,8 +1434,8 @@ contains
          ! used jmax25 = 1.97 vcmax25, from Wullschleger (1993) Journal of Experimental Botany 44:907-920.
 
          jmax25top = (2.59_r8 - 0.035_r8*min(max((t10(p)-tfrz),11._r8),35._r8)) * vcmax25top
-         tpu25top  = 0.167_r8 * vcmax25top
-         kp25top   = 20000._r8 * vcmax25top
+         tpu25top  = params_inst%tpu25ratio * vcmax25top
+         kp25top   = params_inst%kp25ratio * vcmax25top
 
          ! Nitrogen scaling factor. Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593 used
          ! kn = 0.11. Here, derive kn from vcmax25 as in Lloyd et al (2010) Biogeosciences, 7, 1833-1859
@@ -1492,7 +1524,8 @@ contains
             endif
           
             if (c3flag(p)) then
-               lmr_z(p,iv) = lmr25 * ft(t_veg(p), lmrha) * fth(t_veg(p), lmrhd, lmrse, lmrc)
+               lmr_z(p,iv) = lmr25 * ft(t_veg(p), params_inst%lmrha) * fth(t_veg(p), params_inst%lmrhd, &
+                    params_inst%lmrse, lmrc)
             else
                lmr_z(p,iv) = lmr25 * 2._r8**((t_veg(p)-(tfrz+25._r8))/10._r8)
                lmr_z(p,iv) = lmr_z(p,iv) / (1._r8 + exp( 1.3_r8*(t_veg(p)-(tfrz+55._r8)) ))
@@ -1514,7 +1547,7 @@ contains
                if(use_luna.and.c3flag(p).and.crop(patch%itype(p))== 0)then
                   vcmax25 = photosyns_inst%vcmx25_z_patch(p,iv)
                   jmax25 = photosyns_inst%jmx25_z_patch(p,iv)
-                  tpu25 = 0.167_r8 * vcmax25 
+                  tpu25 = params_inst%tpu25ratio * vcmax25 
                   !Implement scaling of Vcmax25 from sunlit average to shaded canopy average value. RF & GBB. 1 July 2016
                   if(phase == 'sha'.and.surfalb_inst%vcmaxcintsun_patch(p).gt.0._r8.and.nlevcan==1) then
                      vcmax25 = vcmax25 * surfalb_inst%vcmaxcintsha_patch(p)/surfalb_inst%vcmaxcintsun_patch(p)
@@ -1534,12 +1567,14 @@ contains
                vcmaxse = 668.39_r8 - 1.07_r8 * min(max((t10(p)-tfrz),11._r8),35._r8)
                jmaxse  = 659.70_r8 - 0.75_r8 * min(max((t10(p)-tfrz),11._r8),35._r8)
                tpuse = vcmaxse
-               vcmaxc = fth25 (vcmaxhd, vcmaxse)
-               jmaxc  = fth25 (jmaxhd, jmaxse)
-               tpuc   = fth25 (tpuhd, tpuse)
-               vcmax_z(p,iv) = vcmax25 * ft(t_veg(p), vcmaxha) * fth(t_veg(p), vcmaxhd, vcmaxse, vcmaxc)
-               jmax_z(p,iv) = jmax25 * ft(t_veg(p), jmaxha) * fth(t_veg(p), jmaxhd, jmaxse, jmaxc)
-               tpu_z(p,iv) = tpu25 * ft(t_veg(p), tpuha) * fth(t_veg(p), tpuhd, tpuse, tpuc)
+               vcmaxc = fth25 (params_inst%vcmaxhd, vcmaxse)
+               jmaxc  = fth25 (params_inst%jmaxhd, jmaxse)
+               tpuc   = fth25 (params_inst%tpuhd, tpuse)
+               vcmax_z(p,iv) = vcmax25 * ft(t_veg(p), params_inst%vcmaxha) * fth(t_veg(p), &
+                    params_inst%vcmaxhd, vcmaxse, vcmaxc)
+               jmax_z(p,iv) = jmax25 * ft(t_veg(p), params_inst%jmaxha) * fth(t_veg(p), &
+                    params_inst%jmaxhd, jmaxse, jmaxc)
+               tpu_z(p,iv) = tpu25 * ft(t_veg(p), params_inst%tpuha) * fth(t_veg(p), params_inst%tpuhd, tpuse, tpuc)
 
                if (.not. c3flag(p)) then
                   vcmax_z(p,iv) = vcmax25 * 2._r8**((t_veg(p)-(tfrz+25._r8))/10._r8)
@@ -1616,8 +1651,8 @@ contains
                ! Electron transport rate for C3 plants. Convert par from W/m2 to
                ! umol photons/m**2/s using the factor 4.6
 
-               qabs  = 0.5_r8 * (1._r8 - fnps) * par_z(p,iv) * 4.6_r8
-               aquad = theta_psii
+               qabs  = 0.5_r8 * (1._r8 - params_inst%fnps) * par_z(p,iv) * 4.6_r8
+               aquad = params_inst%theta_psii
                bquad = -(qabs + jmax_z(p,iv))
                cquad = qabs * jmax_z(p,iv)
                call quadratic (aquad, bquad, cquad, r1, r2)
@@ -1921,7 +1956,7 @@ contains
     real(r8) :: ci
     !------------------------------------------------------------------------------
 
-    SHR_ASSERT_ALL((ubound(downreg) == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
+    SHR_ASSERT_ALL_FL((ubound(downreg) == (/bounds%endp/)), sourcefile, __LINE__)
 
     associate(                                                  &
          forc_pbot   => atm2lnd_inst%forc_pbot_downscaled_col , & ! Input:  [real(r8) (:)   ]  atmospheric pressure (Pa)
@@ -2321,14 +2356,12 @@ contains
 
     real(r8) :: aquad, bquad, cquad  ! terms for quadratic equations
     real(r8) :: r1, r2               ! roots of quadratic equation
-    real(r8) :: fnps                 ! fraction of light absorbed by non-photosynthetic pigments
-    real(r8) :: theta_psii           ! empirical curvature parameter for electron transport rate
-    real(r8) :: theta_ip             ! empirical curvature parameter for ap photosynthesis co-limitation
     !------------------------------------------------------------------------------
 
     associate(&
          forc_pbot  => atm2lnd_inst%forc_pbot_downscaled_col   , & ! Output: [real(r8) (:)   ]  atmospheric pressure (Pa)
          c3flag     => photosyns_inst%c3flag_patch             , & ! Output: [logical  (:)   ]  true if C3 and false if C4
+         ivt        => patch%itype                             , & ! Input:  [integer  (:)   ]  patch vegetation type
          ac         => photosyns_inst%ac_patch                 , & ! Output: [real(r8) (:,:) ]  Rubisco-limited gross photosynthesis (umol CO2/m**2/s)
          aj         => photosyns_inst%aj_patch                 , & ! Output: [real(r8) (:,:) ]  RuBP-limited gross photosynthesis (umol CO2/m**2/s)
          ap         => photosyns_inst%ap_patch                 , & ! Output: [real(r8) (:,:) ]  product-limited (C3) or CO2-limited (C4) gross photosynthesis (umol CO2/m**2/s)
@@ -2341,15 +2374,9 @@ contains
          qe         => photosyns_inst%qe_patch                 , & ! Output: [real(r8) (:)   ]  quantum efficiency, used only for C4 (mol CO2 / mol photons)
          tpu_z      => photosyns_inst%tpu_z_patch              , & ! Output: [real(r8) (:,:) ]  triose phosphate utilization rate (umol CO2/m**2/s)
          kp_z       => photosyns_inst%kp_z_patch               , & ! Output: [real(r8) (:,:) ]  initial slope of CO2 response curve (C4 plants)
-         theta_cj   => photosyns_inst%theta_cj_patch           , & ! Output: [real(r8) (:)   ]  empirical curvature parameter for ac, aj photosynthesis co-limitation
          bbb        => photosyns_inst%bbb_patch                , & ! Output: [real(r8) (:)   ]  Ball-Berry minimum leaf conductance (umol H2O/m**2/s)
          mbb        => photosyns_inst%mbb_patch                  & ! Output: [real(r8) (:)   ]  Ball-Berry slope of conductance-photosynthesis relationship
          )
-
-      ! Miscellaneous parameters, from Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593
-      fnps = 0.15_r8
-      theta_psii = 0.7_r8
-      theta_ip = 0.95_r8
 
       if (c3flag(p)) then
          ! C3: Rubisco-limited photosynthesis
@@ -2376,13 +2403,13 @@ contains
 
       ! Gross photosynthesis. First co-limit ac and aj. Then co-limit ap
 
-      aquad = theta_cj(p)
+      aquad = params_inst%theta_cj(ivt(p))
       bquad = -(ac(p,iv) + aj(p,iv))
       cquad = ac(p,iv) * aj(p,iv)
       call quadratic (aquad, bquad, cquad, r1, r2)
       ai = min(r1,r2)
 
-      aquad = theta_ip
+      aquad = params_inst%theta_ip
       bquad = -(ai + ap(p,iv))
       cquad = ai * ap(p,iv)
       call quadratic (aquad, bquad, cquad, r1, r2)
@@ -2418,9 +2445,9 @@ contains
   subroutine PhotosynthesisHydraulicStress ( bounds, fn, filterp, &
        esat_tv, eair, oair, cair, rb, bsun, bsha, btran, dayl_factor, leafn, &
        qsatl, qaf, &
-       atm2lnd_inst, temperature_inst, soilstate_inst, waterstate_inst, &
+       atm2lnd_inst, temperature_inst, soilstate_inst, waterdiagnosticbulk_inst, &
        surfalb_inst, solarabs_inst, canopystate_inst, ozone_inst, &
-       photosyns_inst, waterflux_inst, froot_carbon, croot_carbon)
+       photosyns_inst, waterfluxbulk_inst, froot_carbon, croot_carbon)
     !
     ! !DESCRIPTION:
     ! Leaf photosynthesis and stomatal conductance calculation as described by
@@ -2433,7 +2460,7 @@ contains
     ! !USES:
     use clm_varcon        , only : rgas, tfrz, rpi, spval
     use GridcellType      , only : grc
-    use clm_time_manager  , only : get_step_size, is_near_local_noon
+    use clm_time_manager  , only : get_step_size_real, is_near_local_noon
     use clm_varctl        , only : cnallocate_carbon_only
     use clm_varctl        , only : lnc_opt, reduce_dayl_factor, vcmax_opt    
     use clm_varpar        , only : nlevsoi
@@ -2466,8 +2493,8 @@ contains
     type(surfalb_type)     , intent(in)    :: surfalb_inst
     type(solarabs_type)    , intent(in)    :: solarabs_inst
     type(canopystate_type) , intent(inout) :: canopystate_inst
-    type(waterstate_type)  , intent(inout) :: waterstate_inst
-    type(waterflux_type)   , intent(inout) :: waterflux_inst
+    type(waterdiagnosticbulk_type)  , intent(inout) :: waterdiagnosticbulk_inst
+    type(waterfluxbulk_type)   , intent(inout) :: waterfluxbulk_inst
     type(soilstate_type)   , intent(inout) :: soilstate_inst
     class(ozone_base_type) , intent(in)    :: ozone_inst
     type(photosyns_type)   , intent(inout) :: photosyns_inst
@@ -2498,33 +2525,14 @@ contains
     real(r8) :: ko25           ! Michaelis-Menten constant for O2 at 25C (Pa)
     real(r8) :: cp25           ! CO2 compensation point at 25C (Pa)
 
-    real(r8) :: vcmaxha        ! activation energy for vcmax (J/mol)
-    real(r8) :: jmaxha         ! activation energy for jmax (J/mol)
-    real(r8) :: tpuha          ! activation energy for tpu (J/mol)
-    real(r8) :: lmrha          ! activation energy for lmr (J/mol)
-    real(r8) :: kcha           ! activation energy for kc (J/mol)
-    real(r8) :: koha           ! activation energy for ko (J/mol)
-    real(r8) :: cpha           ! activation energy for cp (J/mol)
-
-    real(r8) :: vcmaxhd        ! deactivation energy for vcmax (J/mol)
-    real(r8) :: jmaxhd         ! deactivation energy for jmax (J/mol)
-    real(r8) :: tpuhd          ! deactivation energy for tpu (J/mol)
-    real(r8) :: lmrhd          ! deactivation energy for lmr (J/mol)
-
     real(r8) :: vcmaxse        ! entropy term for vcmax (J/mol/K)
     real(r8) :: jmaxse         ! entropy term for jmax (J/mol/K)
     real(r8) :: tpuse          ! entropy term for tpu (J/mol/K)
-    real(r8) :: lmrse          ! entropy term for lmr (J/mol/K)
 
     real(r8) :: vcmaxc         ! scaling factor for high temperature inhibition (25 C = 1.0)
     real(r8) :: jmaxc          ! scaling factor for high temperature inhibition (25 C = 1.0)
     real(r8) :: tpuc           ! scaling factor for high temperature inhibition (25 C = 1.0)
     real(r8) :: lmrc           ! scaling factor for high temperature inhibition (25 C = 1.0)
-
-    real(r8) :: fnps           ! fraction of light absorbed by non-photosynthetic pigments
-    real(r8) :: theta_psii     ! empirical curvature parameter for electron transport rate
-
-    real(r8) :: theta_ip       ! empirical curvature parameter for ap photosynthesis co-limitation
 
     ! Other
     integer  :: f,p,c,iv          ! indices
@@ -2552,8 +2560,6 @@ contains
     real(r8) :: aquad,bquad,cquad ! terms for quadratic equations
     real(r8) :: r1,r2             ! roots of quadratic equation
     real(r8) :: ceair             ! vapor pressure of air, constrained (Pa)
-    real(r8) :: fnr               ! (gRubisco/gN in Rubisco)
-    real(r8) :: act25             ! (umol/mgRubisco/min) Rubisco activity at 25 C
     integer  :: iter1             ! number of iterations used, for record only
     integer  :: iter2             ! number of iterations used, for record only 
     real(r8) :: nscaler           ! leaf nitrogen scaling coefficient
@@ -2654,17 +2660,17 @@ contains
 
     ! Enforce expected array sizes
 
-    SHR_ASSERT_ALL((ubound(esat_tv)     == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(eair)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(oair)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(cair)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(rb)          == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(bsun)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(bsha)        == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(btran)       == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(dayl_factor) == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(qsatl)       == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(qaf)         == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
+    SHR_ASSERT_ALL_FL((ubound(esat_tv)     == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(eair)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(oair)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(cair)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(rb)          == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(bsun)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(bsha)        == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(btran)       == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(dayl_factor) == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(qsatl)       == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(qaf)         == (/bounds%endp/)), sourcefile, __LINE__)
 
     associate(                                                 &
          k_soil_root  => soilstate_inst%k_soil_root_patch    , & ! Input:  [real(r8) (:,:) ]  soil-root interface conductance (mm/s)
@@ -2721,7 +2727,6 @@ contains
          kc         => photosyns_inst%kc_patch               , & ! Output: [real(r8) (:)   ]  Michaelis-Menten constant for CO2 (Pa)
          ko         => photosyns_inst%ko_patch               , & ! Output: [real(r8) (:)   ]  Michaelis-Menten constant for O2 (Pa)
          qe         => photosyns_inst%qe_patch               , & ! Output: [real(r8) (:)   ]  quantum efficiency, used only for C4 (mol CO2 / mol photons)
-         theta_cj   => photosyns_inst%theta_cj_patch         , & ! Output: [real(r8) (:)   ]  empirical curvature parameter for ac, aj photosynthesis co-limitation
          bbb        => photosyns_inst%bbb_patch              , & ! Output: [real(r8) (:)   ]  Ball-Berry minimum leaf conductance (umol H2O/m**2/s)
          mbb        => photosyns_inst%mbb_patch              , & ! Output: [real(r8) (:)   ]  Ball-Berry slope of conductance-photosynthesis relationship
          rh_leaf    => photosyns_inst%rh_leaf_patch          , & ! Output: [real(r8) (:)   ]  fractional humidity at leaf surface (dimensionless)
@@ -2779,38 +2784,18 @@ contains
 
       ! Determine seconds off current time step
 
-      dtime = get_step_size()
-
-      ! vcmax25 parameters, from CN
-
-      fnr = 7.16_r8
-      act25 = 3.6_r8   !umol/mgRubisco/min
-      ! Convert rubisco activity units from umol/mgRubisco/min -> umol/gRubisco/s
-      act25 = act25 * 1000.0_r8 / 60.0_r8
+      dtime = get_step_size_real()
 
       ! Activation energy, from:
       ! Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
       ! Bernacchi et al (2003) Plant, Cell and Environment 26:1419-1430
       ! except TPU from: Harley et al (1992) Plant, Cell and Environment 15:271-282
 
-      kcha    = 79430._r8
-      koha    = 36380._r8
-      cpha    = 37830._r8
-      vcmaxha = 72000._r8
-      jmaxha  = 50000._r8
-      tpuha   = 72000._r8
-      lmrha   = 46390._r8
-
       ! High temperature deactivation, from:
       ! Leuning (2002) Plant, Cell and Environment 25:1205-1210
       ! The factor "c" scales the deactivation to a value of 1.0 at 25C
 
-      vcmaxhd = 200000._r8
-      jmaxhd  = 200000._r8
-      tpuhd   = 200000._r8
-      lmrhd   = 150650._r8
-      lmrse   = 490._r8
-      lmrc    = fth25 (lmrhd, lmrse)
+      lmrc    = fth25 (params_inst%lmrhd, params_inst%lmrse)
 
 ! calculate root-soil interface conductance 
       do f = 1, fn
@@ -2868,10 +2853,6 @@ contains
 
       ! Miscellaneous parameters, from Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593
 
-      fnps = 0.15_r8
-      theta_psii = 0.7_r8
-      theta_ip = 0.95_r8
-
       do f = 1, fn
          p = filterp(f)
          c = patch%column(p)
@@ -2888,11 +2869,9 @@ contains
 
          if (c3flag(p)) then
             qe(p) = 0._r8
-            theta_cj(p) = 0.98_r8
             bbbopt(p) = 10000._r8
          else
             qe(p) = 0.05_r8
-            theta_cj(p) = 0.80_r8
             bbbopt(p) = 40000._r8
          end if
  
@@ -2903,22 +2882,22 @@ contains
          end if
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
          !
-         !       kc25 = 404.9 umol/mol
-         !       ko25 = 278.4 mmol/mol
-         !       cp25 = 42.75 umol/mol
+         !       kc25_coef = 404.9e-6 mol/mol
+         !       ko25_coef = 278.4e-3 mol/mol
+         !       cp25_yr2000 = 42.75e-6 mol/mol
          !
          ! Derive sco from cp and O2 using present-day O2 (0.209 mol/mol) and re-calculate
          ! cp to account for variation in O2 using cp = 0.5 O2 / sco
          !
 
-         kc25 = (404.9_r8 / 1.e06_r8) * forc_pbot(c)
-         ko25 = (278.4_r8 / 1.e03_r8) * forc_pbot(c)
-         sco  = 0.5_r8 * 0.209_r8 / (42.75_r8 / 1.e06_r8)
+         kc25 = params_inst%kc25_coef * forc_pbot(c)
+         ko25 = params_inst%ko25_coef * forc_pbot(c)
+         sco  = 0.5_r8 * 0.209_r8 / params_inst%cp25_yr2000
          cp25 = 0.5_r8 * oair(p) / sco
 
-         kc(p) = kc25 * ft(t_veg(p), kcha)
-         ko(p) = ko25 * ft(t_veg(p), koha)
-         cp(p) = cp25 * ft(t_veg(p), cpha)
+         kc(p) = kc25 * ft(t_veg(p), params_inst%kcha)
+         ko(p) = ko25 * ft(t_veg(p), params_inst%koha)
+         cp(p) = cp25 * ft(t_veg(p), params_inst%cpha)
 
       end do
 
@@ -2988,7 +2967,7 @@ contains
          ! Default
          if (vcmax_opt == 0) then                                                   
             ! vcmax25 at canopy top, as in CN but using lnc at top of the canopy
-            vcmax25top = lnc(p) * flnr(patch%itype(p)) * fnr * act25 * dayl_factor(p)
+            vcmax25top = lnc(p) * flnr(patch%itype(p)) * params_inst%fnr * params_inst%act25 * dayl_factor(p)
             if (.not. use_cn) then
                vcmax25top = vcmax25top * fnitr(patch%itype(p))
             else
@@ -3000,11 +2979,11 @@ contains
             nptreemax = 9  ! is this number correct? check later
             if (patch%itype(p) >= nptreemax) then   ! if not tree
                ! for shrubs and herbs
-               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) + s_flnr(patch%itype(p)) * lnc(p) ) * fnr * act25 * &
+               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) + s_flnr(patch%itype(p)) * lnc(p) ) * params_inst%fnr * params_inst%act25 * &
                     dayl_factor(p)
             else
                ! if tree
-               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) * exp(s_flnr(patch%itype(p)) * lnc(p)) ) * fnr * act25 * &
+               vcmax25top = lnc(p) * ( i_flnr(patch%itype(p)) * exp(s_flnr(patch%itype(p)) * lnc(p)) ) * params_inst%fnr * params_inst%act25 * &
                     dayl_factor(p)
                ! for trees
             end if
@@ -3014,8 +2993,8 @@ contains
          ! used jmax25 = 1.97 vcmax25, from Wullschleger (1993) Journal of Experimental Botany 44:907-920.
 
          jmax25top = (2.59_r8 - 0.035_r8*min(max((t10(p)-tfrz),11._r8),35._r8)) * vcmax25top
-         tpu25top  = 0.167_r8 * vcmax25top
-         kp25top   = 20000._r8 * vcmax25top
+         tpu25top  = params_inst%tpu25ratio * vcmax25top
+         kp25top   = params_inst%kp25ratio * vcmax25top
          luvcmax25top(p) = vcmax25top
          lujmax25top(p) = jmax25top
          lutpu25top(p)=tpu25top
@@ -3111,8 +3090,10 @@ contains
             endif
           
             if (c3flag(p)) then
-               lmr_z_sun(p,iv) = lmr25_sun * ft(t_veg(p), lmrha) * fth(t_veg(p), lmrhd, lmrse, lmrc)
-               lmr_z_sha(p,iv) = lmr25_sha * ft(t_veg(p), lmrha) * fth(t_veg(p), lmrhd, lmrse, lmrc)
+               lmr_z_sun(p,iv) = lmr25_sun * ft(t_veg(p), params_inst%lmrha) * fth(t_veg(p), params_inst%lmrhd, &
+                    params_inst%lmrse, lmrc)
+               lmr_z_sha(p,iv) = lmr25_sha * ft(t_veg(p), params_inst%lmrha) * fth(t_veg(p), params_inst%lmrhd, &
+                    params_inst%lmrse, lmrc)
             else
                lmr_z_sun(p,iv) = lmr25_sun * 2._r8**((t_veg(p)-(tfrz+25._r8))/10._r8)
                lmr_z_sun(p,iv) = lmr_z_sun(p,iv) / (1._r8 + exp( 1.3_r8*(t_veg(p)-(tfrz+55._r8)) ))
@@ -3148,8 +3129,8 @@ contains
                   vcmax25_sha = photosyns_inst%vcmx25_z_patch(p,iv)
                   jmax25_sun = photosyns_inst%jmx25_z_patch(p,iv)
                   jmax25_sha = photosyns_inst%jmx25_z_patch(p,iv)
-                  tpu25_sun = 0.167_r8 * vcmax25_sun        
-                  tpu25_sha = 0.167_r8 * vcmax25_sha        
+                  tpu25_sun = params_inst%tpu25ratio * vcmax25_sun        
+                  tpu25_sha = params_inst%tpu25ratio * vcmax25_sha        
                   if(surfalb_inst%vcmaxcintsun_patch(p).gt.0._r8.and.nlevcan==1) then
                     vcmax25_sha = vcmax25_sun * surfalb_inst%vcmaxcintsha_patch(p)/surfalb_inst%vcmaxcintsun_patch(p)
                     jmax25_sha  = jmax25_sun  * surfalb_inst%vcmaxcintsha_patch(p)/surfalb_inst%vcmaxcintsun_patch(p) 
@@ -3171,15 +3152,21 @@ contains
                vcmaxse = 668.39_r8 - 1.07_r8 * min(max((t10(p)-tfrz),11._r8),35._r8)
                jmaxse  = 659.70_r8 - 0.75_r8 * min(max((t10(p)-tfrz),11._r8),35._r8)
                tpuse = vcmaxse
-               vcmaxc = fth25 (vcmaxhd, vcmaxse)
-               jmaxc  = fth25 (jmaxhd, jmaxse)
-               tpuc   = fth25 (tpuhd, tpuse)
-               vcmax_z(p,sun,iv) = vcmax25_sun * ft(t_veg(p), vcmaxha) * fth(t_veg(p), vcmaxhd, vcmaxse, vcmaxc)
-               jmax_z(p,sun,iv) = jmax25_sun * ft(t_veg(p), jmaxha) * fth(t_veg(p), jmaxhd, jmaxse, jmaxc)
-               tpu_z(p,sun,iv) = tpu25_sun * ft(t_veg(p), tpuha) * fth(t_veg(p), tpuhd, tpuse, tpuc)
-               vcmax_z(p,sha,iv) = vcmax25_sha * ft(t_veg(p), vcmaxha) * fth(t_veg(p), vcmaxhd, vcmaxse, vcmaxc)
-               jmax_z(p,sha,iv) = jmax25_sha * ft(t_veg(p), jmaxha) * fth(t_veg(p), jmaxhd, jmaxse, jmaxc)
-               tpu_z(p,sha,iv) = tpu25_sha * ft(t_veg(p), tpuha) * fth(t_veg(p), tpuhd, tpuse, tpuc)
+               vcmaxc = fth25 (params_inst%vcmaxhd, vcmaxse)
+               jmaxc  = fth25 (params_inst%jmaxhd, jmaxse)
+               tpuc   = fth25 (params_inst%tpuhd, tpuse)
+               vcmax_z(p,sun,iv) = vcmax25_sun * ft(t_veg(p), params_inst%vcmaxha) * fth(t_veg(p), &
+                    params_inst%vcmaxhd, vcmaxse, vcmaxc)
+               jmax_z(p,sun,iv) = jmax25_sun * ft(t_veg(p), params_inst%jmaxha) * fth(t_veg(p), &
+                    params_inst%jmaxhd, jmaxse, jmaxc)
+               tpu_z(p,sun,iv) = tpu25_sun * ft(t_veg(p), params_inst%tpuha) * fth(t_veg(p), &
+                    params_inst%tpuhd, tpuse, tpuc)
+               vcmax_z(p,sha,iv) = vcmax25_sha * ft(t_veg(p), params_inst%vcmaxha) * fth(t_veg(p), &
+                    params_inst%vcmaxhd, vcmaxse, vcmaxc)
+               jmax_z(p,sha,iv) = jmax25_sha * ft(t_veg(p), params_inst%jmaxha) * fth(t_veg(p), &
+                    params_inst%jmaxhd, jmaxse, jmaxc)
+               tpu_z(p,sha,iv) = tpu25_sha * ft(t_veg(p), params_inst%tpuha) * fth(t_veg(p), &
+                    params_inst%tpuhd, tpuse, tpuc)
 
                if (.not. c3flag(p)) then
                   vcmax_z(p,sun,iv) = vcmax25_sun * 2._r8**((t_veg(p)-(tfrz+25._r8))/10._r8)
@@ -3245,8 +3232,8 @@ contains
                   gsminsha = nan
                end if
                call calcstress(p,c,vegwp(p,:),bsun(p),bsha(p),gb_mol(p),gsminsun, gsminsha, &
-                    qsatl(p),qaf(p), atm2lnd_inst,canopystate_inst,waterstate_inst, &
-                    soilstate_inst,temperature_inst, waterflux_inst)
+                    qsatl(p),qaf(p), atm2lnd_inst,canopystate_inst,waterdiagnosticbulk_inst, &
+                    soilstate_inst,temperature_inst, waterfluxbulk_inst)
 
                ac(p,sun,iv) = 0._r8
                aj(p,sun,iv) = 0._r8
@@ -3297,16 +3284,16 @@ contains
                ! umol photons/m**2/s using the factor 4.6
 
                ! sun
-               qabs  = 0.5_r8 * (1._r8 - fnps) * par_z_sun(p,iv) * 4.6_r8
-               aquad = theta_psii
+               qabs  = 0.5_r8 * (1._r8 - params_inst%fnps) * par_z_sun(p,iv) * 4.6_r8
+               aquad = params_inst%theta_psii
                bquad = -(qabs + jmax_z(p,sun,iv))
                cquad = qabs * jmax_z(p,sun,iv)
                call quadratic (aquad, bquad, cquad, r1, r2)
                je_sun = min(r1,r2)
 
                ! sha
-               qabs  = 0.5_r8 * (1._r8 - fnps) * par_z_sha(p,iv) * 4.6_r8
-               aquad = theta_psii
+               qabs  = 0.5_r8 * (1._r8 - params_inst%fnps) * par_z_sha(p,iv) * 4.6_r8
+               aquad = params_inst%theta_psii
                bquad = -(qabs + jmax_z(p,sha,iv))
                cquad = qabs * jmax_z(p,sha,iv)
                call quadratic (aquad, bquad, cquad, r1, r2)
@@ -3327,7 +3314,7 @@ contains
                                je_sha, cair(p), oair(p), lmr_z_sun(p,iv), lmr_z_sha(p,iv), &
                                par_z_sun(p,iv), par_z_sha(p,iv), rh_can, gs_mol_sun(p,iv), gs_mol_sha(p,iv), &
                                qsatl(p), qaf(p), iter1, iter2, atm2lnd_inst, photosyns_inst, &
-                               canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst, waterflux_inst)
+                               canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst, waterfluxbulk_inst)
                if ( stomatalcond_mtd == stomatalcond_mtd_medlyn2011 )then
                   gsminsun     = medlynintercept(patch%itype(p))
                   gsminsha     = medlynintercept(patch%itype(p))
@@ -3550,7 +3537,7 @@ contains
   subroutine hybrid_PHS(x0sun, x0sha, p, iv, c, gb_mol, bsun, bsha, jesun, jesha, &
        cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha, rh_can, &
        gs_mol_sun, gs_mol_sha, qsatl, qaf, iter1, iter2, atm2lnd_inst, photosyns_inst, &
-       canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst, waterflux_inst)
+       canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst, waterfluxbulk_inst)
     !
     !! DESCRIPTION:
     !use a hybrid solver to find the root of the ci_func equation for sunlit and shaded leaves
@@ -3592,8 +3579,8 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_inst
     type(photosyns_type)   , intent(inout) :: photosyns_inst
     type(canopystate_type) , intent(inout) :: canopystate_inst
-    type(waterstate_type)  , intent(inout) :: waterstate_inst
-    type(waterflux_type)   , intent(inout) :: waterflux_inst
+    type(waterdiagnosticbulk_type)  , intent(inout) :: waterdiagnosticbulk_inst
+    type(waterfluxbulk_type)   , intent(inout) :: waterfluxbulk_inst
     type(soilstate_type)   , intent(inout) :: soilstate_inst
     type(temperature_type) , intent(in)    :: temperature_inst
     !
@@ -3630,7 +3617,7 @@ contains
     !------------------------------------------------------------------------------
     
     associate(                                                    &
-         qflx_tran_veg => waterflux_inst%qflx_tran_veg_patch    , & ! Input:  [real(r8) (:)   ]  vegetation transpiration (mm H2O/s) (+ = to atm)
+         qflx_tran_veg => waterfluxbulk_inst%qflx_tran_veg_patch    , & ! Input:  [real(r8) (:)   ]  vegetation transpiration (mm H2O/s) (+ = to atm)
          vegwp         => canopystate_inst%vegwp_patch            & ! Input/Output: [real(r8) (:,:) ]  vegetation water matric potential (mm)
     )
 
@@ -3660,8 +3647,8 @@ contains
        ! this ci_func_PHS call updates bsun/bsha (except on first iter)
        call ci_func_PHS(x,x0sun, x0sha, f0sun, f0sha, p, iv, c, bsun, bsha, bflag, gb_mol, gs0sun, gs0sha,&
             gs_mol_sun, gs_mol_sha, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha, rh_can, &
-            qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterstate_inst, soilstate_inst, &
-            temperature_inst, waterflux_inst)
+            qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, &
+            temperature_inst, waterfluxbulk_inst)
        
        ! update bsun/bsha convergence vars
        dbsun=b0sun-bsun
@@ -3673,8 +3660,8 @@ contains
        ! this ci_func_PHS call creates second point for ci interpolation
        call ci_func_PHS(x,x1sun, x1sha, f1sun, f1sha, p, iv, c, bsun, bsha, bflag, gb_mol, gs0sun, gs0sha,&
             gs_mol_sun, gs_mol_sha, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha, rh_can, &
-            qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterstate_inst, soilstate_inst, &
-            temperature_inst, waterflux_inst)
+            qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, &
+            temperature_inst, waterfluxbulk_inst)
        
        do                !inner loop finds ci
           if ( (abs(f0sun) < eps1) .and. (abs(f0sha) < eps1) ) then
@@ -3705,8 +3692,8 @@ contains
           
           call ci_func_PHS(x,x1sun, x1sha, f1sun, f1sha, p, iv, c, bsun, bsha, bflag, gb_mol, gs0sun, gs0sha,&
                gs_mol_sun, gs_mol_sha, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha, rh_can, &
-               qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterstate_inst, soilstate_inst, &
-               temperature_inst, waterflux_inst)
+               qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, &
+               temperature_inst, waterfluxbulk_inst)
 
           if ( (abs(dxsun) < tolsun ) .and. (abs(dxsha) <tolsha) ) then
              x0sun=x1sun
@@ -3736,7 +3723,7 @@ contains
              call brent_PHS(xsun, x0sun, x1sun, f0sun, f1sun, xsha, x0sha, x1sha, f0sha, f1sha, &
                   tolsun, p, iv, c, gb_mol, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha,&
                   rh_can, gs_mol_sun, gs_mol_sha, bsun, bsha, qsatl, qaf, atm2lnd_inst, photosyns_inst, &
-                  canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst, waterflux_inst)
+                  canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst, waterfluxbulk_inst)
              x0sun=xsun
              x0sha=xsha
              exit
@@ -3747,8 +3734,8 @@ contains
              x1sha=minxsha
              call ci_func_PHS(x,x1sun, x1sha, f1sun, f1sha, p, iv, c, bsun, bsha, bflag, gb_mol, gs0sun, gs0sha,&
                   gs_mol_sun, gs_mol_sha, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha, rh_can, &
-                  qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterstate_inst, soilstate_inst, &
-                  temperature_inst, waterflux_inst)
+                  qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, &
+                  temperature_inst, waterfluxbulk_inst)
              exit
           endif
           
@@ -3778,7 +3765,7 @@ contains
     
     !set vegwp for the final gs_mol solution
     call getvegwp(p, c, x, gb_mol, gs_mol_sun, gs_mol_sha, qsatl, qaf, soilflux, &
-         atm2lnd_inst, canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst)
+         atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst)
     vegwp(p,:)=x
     if (soilflux<0._r8) soilflux = 0._r8
     qflx_tran_veg(p) = soilflux
@@ -3792,7 +3779,7 @@ contains
   subroutine brent_PHS(xsun, x1sun, x2sun, f1sun, f2sun, xsha, x1sha, x2sha, f1sha, f2sha, &
        tol, ip, iv, ic, gb_mol, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha,&
        rh_can, gs_mol_sun, gs_mol_sha, bsun, bsha, qsatl, qaf, atm2lnd_inst, photosyns_inst, &
-       canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst, waterflux_inst)
+       canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst, waterfluxbulk_inst)
     !------------------------------------------------------------------------------
     implicit none
     !
@@ -3827,8 +3814,8 @@ contains
     type(atm2lnd_type)     , intent(in)       :: atm2lnd_inst
     type(photosyns_type)   , intent(inout)    :: photosyns_inst
     type(canopystate_type) , intent(inout)    :: canopystate_inst
-    type(waterstate_type)  , intent(inout)    :: waterstate_inst
-    type(waterflux_type)   , intent(inout)    :: waterflux_inst
+    type(waterdiagnosticbulk_type)  , intent(inout)    :: waterdiagnosticbulk_inst
+    type(waterfluxbulk_type)   , intent(inout)    :: waterfluxbulk_inst
     type(soilstate_type)   , intent(inout)    :: soilstate_inst
     type(temperature_type) , intent(in)       :: temperature_inst
     !------------------------------------------------------------------------------
@@ -3930,8 +3917,8 @@ contains
        gs0sha = gs_mol_sha
        call ci_func_PHS(x,b(sun), b(sha), fb(sun), fb(sha), ip, iv, ic, bsun, bsha, bflag, gb_mol, gs0sun, gs0sha, &
             gs_mol_sun, gs_mol_sha, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha, rh_can, &
-            qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterstate_inst, soilstate_inst, &
-            temperature_inst, waterflux_inst)
+            qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, &
+            temperature_inst, waterfluxbulk_inst)
        
        if( (fb(sun) == 0._r8) .and. (fb(sha) == 0._r8) ) exit
     enddo
@@ -3947,8 +3934,8 @@ contains
   !------------------------------------------------------------------------------
   subroutine ci_func_PHS(x,cisun, cisha, fvalsun, fvalsha, p, iv, c, bsun, bsha, bflag, gb_mol, gs0sun, gs0sha,&
        gs_mol_sun, gs_mol_sha, jesun, jesha, cair, oair, lmr_z_sun, lmr_z_sha, par_z_sun, par_z_sha, rh_can, &
-       qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterstate_inst, soilstate_inst, &
-       temperature_inst, waterflux_inst)
+       qsatl, qaf, atm2lnd_inst, photosyns_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, &
+       temperature_inst, waterfluxbulk_inst)
     !------------------------------------------------------------------------------
     !
     ! !DESCRIPTION:
@@ -3984,8 +3971,8 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_inst
     type(photosyns_type)   , intent(inout) :: photosyns_inst
     type(canopystate_type) , intent(in)    :: canopystate_inst
-    type(waterstate_type)  , intent(in)    :: waterstate_inst
-    type(waterflux_type)   , intent(in)    :: waterflux_inst
+    type(waterdiagnosticbulk_type)  , intent(in)    :: waterdiagnosticbulk_inst
+    type(waterfluxbulk_type)   , intent(in)    :: waterfluxbulk_inst
     type(soilstate_type)   , intent(in)    :: soilstate_inst
     type(temperature_type) , intent(in)    :: temperature_inst
 
@@ -3994,9 +3981,6 @@ contains
     real(r8) :: cs_sun,cs_sha        ! CO2 partial pressure at leaf surface (Pa)
     real(r8) :: aquad, bquad, cquad  ! terms for quadratic equations
     real(r8) :: r1, r2               ! roots of quadratic equation
-    real(r8) :: fnps                 ! fraction of light absorbed by non-photosynthetic pigments
-    real(r8) :: theta_psii           ! empirical curvature parameter for electron transport rate
-    real(r8) :: theta_ip             ! empirical curvature parameter for ap photosynthesis co-limitation
     real(r8) :: term                 ! intermediate in Medlyn stomatal model
     !
     !------------------------------------------------------------------------------
@@ -4004,6 +3988,7 @@ contains
     associate(                                                 &
          forc_pbot  => atm2lnd_inst%forc_pbot_downscaled_col , & ! Input:  [real(r8) (:)   ]    atmospheric pressure (Pa)
          c3flag     => photosyns_inst%c3flag_patch           , & ! Input:  [logical  (:)   ]    true if C3 and false if C4
+         ivt        => patch%itype                           , & ! Input:  [integer  (:)   ]  patch vegetation type
          medlynslope=> pftcon%medlynslope                    , & ! Input:  [real(r8) (:)   ]  Slope for Medlyn stomatal conductance model method
          medlynintercept=> pftcon%medlynintercept            , & ! Input:  [real(r8) (:)   ]  Intercept for Medlyn stomatal conductance model method
          stomatalcond_mtd=> photosyns_inst%stomatalcond_mtd  , & ! Input:  [integer        ]  method type to use for stomatal conductance.GC.fnlprmsn15_r22845
@@ -4018,7 +4003,6 @@ contains
          qe         => photosyns_inst%qe_patch               , & ! Output: [real(r8) (:)   ]    quantum efficiency, used only for C4 (mol CO2 / mol photons)
          tpu_z      => photosyns_inst%tpu_z_phs_patch        , & ! Output: [real(r8) (:,:,:) ]  triose phosphate utilization rate (umol CO2/m**2/s)
          kp_z       => photosyns_inst%kp_z_phs_patch         , & ! Output: [real(r8) (:,:,:) ]  initial slope of CO2 response curve (C4 plants)
-         theta_cj   => photosyns_inst%theta_cj_patch         , & ! Output: [real(r8) (:)   ]    empirical curvature parameter for ac, aj photosynthesis co-limitation
          bbb        => photosyns_inst%bbb_patch              , & ! Output: [real(r8) (:)   ]  Ball-Berry minimum leaf conductance (umol H2O/m**2/s)
          mbb        => photosyns_inst%mbb_patch              , & ! Output: [real(r8) (:)   ]  Ball-Berry slope of conductance-photosynthesis relationship
          an_sun     => photosyns_inst%an_sun_patch           , & ! Output: [real(r8) (:,:) ]  net sunlit leaf photosynthesis (umol CO2/m**2/s)
@@ -4026,16 +4010,12 @@ contains
          )
     
     !------------------------------------------------------------------------------
-    ! Miscellaneous parameters, from Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593
-    fnps = 0.15_r8
-    theta_psii = 0.7_r8
-    theta_ip = 0.95_r8
     
     if (bflag) then   !zqz what if bsun==0 ... doesn't break... but follow up
 
        call calcstress(p,c,x,bsun,bsha,gb_mol,gs0sun,gs0sha,qsatl,qaf, &
-            atm2lnd_inst,canopystate_inst,waterstate_inst,soilstate_inst, &
-            temperature_inst, waterflux_inst)
+            atm2lnd_inst,canopystate_inst,waterdiagnosticbulk_inst,soilstate_inst, &
+            temperature_inst, waterfluxbulk_inst)
     endif
     
     if (c3flag(p)) then
@@ -4069,26 +4049,26 @@ contains
     ! Gross photosynthesis. First co-limit ac and aj. Then co-limit ap
     
     ! Sunlit
-    aquad = theta_cj(p)
+    aquad = params_inst%theta_cj(ivt(p))
     bquad = -(ac(p,sun,iv) + aj(p,sun,iv))
     cquad = ac(p,sun,iv) * aj(p,sun,iv)
     call quadratic (aquad, bquad, cquad, r1, r2)
     ai = min(r1,r2)
     
-    aquad = theta_ip
+    aquad = params_inst%theta_ip
     bquad = -(ai + ap(p,sun,iv))
     cquad = ai * ap(p,sun,iv)
     call quadratic (aquad, bquad, cquad, r1, r2)
     ag(p,sun,iv) = max(0._r8,min(r1,r2))
     
     ! Shaded
-    aquad = theta_cj(p)
+    aquad = params_inst%theta_cj(ivt(p))
     bquad = -(ac(p,sha,iv) + aj(p,sha,iv))
     cquad = ac(p,sha,iv) * aj(p,sha,iv)
     call quadratic (aquad, bquad, cquad, r1, r2)
     ai = min(r1,r2)
     
-    aquad = theta_ip
+    aquad = params_inst%theta_ip
     bquad = -(ai + ap(p,sha,iv))
     cquad = ai * ap(p,sha,iv)
     call quadratic (aquad, bquad, cquad, r1, r2)
@@ -4196,8 +4176,8 @@ contains
   
   !------------------------------------------------------------------------------
   subroutine calcstress(p,c,x,bsun,bsha,gb_mol,gs_mol_sun,gs_mol_sha,qsatl,qaf, &
-       atm2lnd_inst,canopystate_inst,waterstate_inst,soilstate_inst, &
-       temperature_inst, waterflux_inst)
+       atm2lnd_inst,canopystate_inst,waterdiagnosticbulk_inst,soilstate_inst, &
+       temperature_inst, waterfluxbulk_inst)
     !
     ! DESCRIPTIONS
     ! compute the transpiration stress using a plant hydraulics approach
@@ -4220,10 +4200,10 @@ contains
     real(r8)               , intent(in)  :: qaf             ! humidity of canopy air [kg/kg]
     type(atm2lnd_type)     , intent(in)  :: atm2lnd_inst
     type(canopystate_type) , intent(in)  :: canopystate_inst
-    type(waterstate_type)  , intent(in)  :: waterstate_inst
+    type(waterdiagnosticbulk_type)  , intent(in)  :: waterdiagnosticbulk_inst
     type(soilstate_type)   , intent(in)  :: soilstate_inst
     type(temperature_type) , intent(in)  :: temperature_inst
-    type(waterflux_type)   , intent(in)  :: waterflux_inst
+    type(waterfluxbulk_type)   , intent(in)  :: waterfluxbulk_inst
     !
     ! !LOCAL VARIABLES:
     real(r8) :: wtl                   ! heat conductance for leaf [m/s]
@@ -4255,12 +4235,12 @@ contains
          elai          => canopystate_inst%elai_patch           , & ! Input:  [real(r8) (:)   ]  one-sided leaf area index with burying by snow
          esai          => canopystate_inst%esai_patch           , & ! Input:  [real(r8) (:)   ]  one-sided stem area index with burying by snow
          tsai          => canopystate_inst%tsai_patch           , & ! Input:  [real(r8) (:)   ]  patch canopy one-sided stem area index, no burying by snow
-         fdry          => waterstate_inst%fdry_patch            , & ! Input:  [real(r8) (:)   ]  fraction of foliage that is green and dry [-]
+         fdry          => waterdiagnosticbulk_inst%fdry_patch            , & ! Input:  [real(r8) (:)   ]  fraction of foliage that is green and dry [-]
          forc_rho      => atm2lnd_inst%forc_rho_downscaled_col  , & ! Input:  [real(r8) (:)   ]  density (kg/m**3)
          forc_pbot     => atm2lnd_inst%forc_pbot_downscaled_col , & ! Input:  [real(r8) (:)   ]  atmospheric pressure (Pa)
          tgcm          => temperature_inst%thm_patch            , & ! Input:  [real(r8) (:)   ]  air temperature at agcm reference height (kelvin)
          bsw           => soilstate_inst%bsw_col                , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
-         qflx_tran_veg => waterflux_inst%qflx_tran_veg_patch    , & ! Input:  [real(r8) (:)   ]  vegetation transpiration (mm H2O/s) (+ = to atm)
+         qflx_tran_veg => waterfluxbulk_inst%qflx_tran_veg_patch    , & ! Input:  [real(r8) (:)   ]  vegetation transpiration (mm H2O/s) (+ = to atm)
          sucsat        => soilstate_inst%sucsat_col               & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)
          )
 
@@ -4279,7 +4259,7 @@ contains
     !compute transpiration demand
     havegs=.true.
     call getqflx(p,c,gb_mol,gs0sun,gs0sha,qflx_sun,qflx_sha,qsatl,qaf,havegs, &
-         atm2lnd_inst, canopystate_inst, waterstate_inst, temperature_inst)
+         atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, temperature_inst)
     
     if ((laisun(p)>tol_lai .or. laisha(p)>tol_lai).and.&
          (qflx_sun>0._r8 .or. qflx_sha>0._r8))then
@@ -4291,7 +4271,7 @@ contains
        iter=iter+1
 
        call spacF(p,c,x,f,qflx_sun,qflx_sha, &
-            atm2lnd_inst,canopystate_inst,waterstate_inst,soilstate_inst,temperature_inst,waterflux_inst)
+            atm2lnd_inst,canopystate_inst,soilstate_inst,temperature_inst,waterfluxbulk_inst)
           
        if ( sqrt(sum(f*f)) < tolf*(qflx_sun+qflx_sha) ) then  !fluxes balanced -> exit
           flag = .false.
@@ -4303,7 +4283,7 @@ contains
        end if
        
        call spacA(p,c,x,A,qflx_sun,qflx_sha,flag, &
-            atm2lnd_inst,canopystate_inst,waterstate_inst,soilstate_inst,temperature_inst,waterflux_inst)
+            atm2lnd_inst,canopystate_inst,soilstate_inst,temperature_inst,waterfluxbulk_inst)
 
        if (flag) then
           ! cannot invert the matrix, solve for x algebraically assuming no flux                            
@@ -4359,7 +4339,7 @@ contains
     if (flag) then
        ! solve algebraically
        call getvegwp(p, c, x, gb_mol, gs0sun, gs0sha, qsatl, qaf, soilflux, &
-               atm2lnd_inst, canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst)
+               atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst)
        bsun = plc(x(sun),p,c,sun,veg)
        bsha = plc(x(sha),p,c,sha,veg)
     else     
@@ -4370,7 +4350,7 @@ contains
     ! retrieve stressed stomatal conductance
     havegs=.FALSE.
     call getqflx(p,c,gb_mol,gs0sun,gs0sha,qsun,qsha,qsatl,qaf,havegs, &
-         atm2lnd_inst, canopystate_inst, waterstate_inst, temperature_inst)
+         atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, temperature_inst)
     
     ! compute water stress
     ! .. generally -> B= gs_stressed / gs_unstressed
@@ -4396,7 +4376,7 @@ contains
        gs0sun=bsun*gs_mol_sun
        gs0sha=bsha*gs_mol_sha
        call getvegwp(p, c, x, gb_mol, gs0sun, gs0sha, qsatl, qaf, soilflux, &
-            atm2lnd_inst, canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst)
+            atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst)
        if (soilflux<0._r8) soilflux = 0._r8
        qflx_tran_veg(p) = soilflux
     endif
@@ -4410,8 +4390,8 @@ contains
    
   !------------------------------------------------------------------------------
   subroutine spacA(p,c,x,invA,qflx_sun,qflx_sha,flag, &
-       atm2lnd_inst,canopystate_inst,waterstate_inst,soilstate_inst, &
-       temperature_inst, waterflux_inst)
+       atm2lnd_inst,canopystate_inst,soilstate_inst, &
+       temperature_inst, waterfluxbulk_inst)
     
     !
     ! DESCRIPTION
@@ -4438,10 +4418,9 @@ contains
     logical                , intent(out) :: flag            ! tells calling function that the matrix is not invertible
     type(atm2lnd_type)     , intent(in)  :: atm2lnd_inst
     type(canopystate_type) , intent(in)  :: canopystate_inst
-    type(waterstate_type)  , intent(in)  :: waterstate_inst
     type(soilstate_type)   , intent(in)  :: soilstate_inst
     type(temperature_type) , intent(in)  :: temperature_inst
-    type(waterflux_type)   , intent(in)  :: waterflux_inst
+    type(waterfluxbulk_type)   , intent(in)  :: waterfluxbulk_inst
     !
     ! !LOCAL VARIABLES:
     real(r8) :: wtl                   ! heat conductance for leaf [m/s]
@@ -4593,8 +4572,8 @@ contains
   
   !------------------------------------------------------------------------------
   subroutine spacF(p,c,x,f,qflx_sun,qflx_sha, &
-       atm2lnd_inst,canopystate_inst,waterstate_inst,soilstate_inst, &
-       temperature_inst, waterflux_inst)
+       atm2lnd_inst,canopystate_inst,soilstate_inst, &
+       temperature_inst, waterfluxbulk_inst)
     !
     ! DESCRIPTION
     ! Returns f, the flux divergence across each vegetation segment
@@ -4614,10 +4593,9 @@ contains
     real(r8)               , intent(in)  :: qflx_sha        ! Shaded leaf transpiration [kg/m2/s] 
     type(atm2lnd_type)     , intent(in)  :: atm2lnd_inst
     type(canopystate_type) , intent(in)  :: canopystate_inst
-    type(waterstate_type)  , intent(in)  :: waterstate_inst
     type(soilstate_type)   , intent(in)  :: soilstate_inst
     type(temperature_type) , intent(in)  :: temperature_inst
-    type(waterflux_type)   , intent(in)  :: waterflux_inst
+    type(waterfluxbulk_type)   , intent(in)  :: waterfluxbulk_inst
     !
     ! !LOCAL VARIABLES:
     real(r8) :: wtl                   ! heat conductance for leaf [m/s]
@@ -4640,7 +4618,6 @@ contains
          tsai          => canopystate_inst%tsai_patch           , & ! Input:  [real(r8) (:)   ]  patch canopy one-sided stem area index, no burying by snow
          smp           => soilstate_inst%smp_l_col              , & ! Input: [real(r8) (:,:) ]  soil matrix potential [mm]
          ivt           => patch%itype                           , & ! Input:  [integer  (:)   ]  patch vegetation type
-         qflx_tran_veg => waterflux_inst%qflx_tran_veg_patch    , & ! Input:  [real(r8) (:)   ]  vegetation transpiration (mm H2O/s) (+ = to atm)
          z             => col%z                                   & ! Input:  [real(r8) (:,:) ]  layer node depth (m)
          )
     
@@ -4676,7 +4653,7 @@ contains
   
   !--------------------------------------------------------------------------------
   subroutine getvegwp(p, c, x, gb_mol, gs_mol_sun, gs_mol_sha, qsatl, qaf, soilflux, &
-       atm2lnd_inst, canopystate_inst, waterstate_inst, soilstate_inst, temperature_inst)
+       atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, soilstate_inst, temperature_inst)
     ! !DESCRIPTION:
     !  Calculates transpiration and returns corresponding vegwp in x
     !
@@ -4698,7 +4675,7 @@ contains
     real(r8)               , intent(out) :: soilflux         ! total soil column transpiration [mm/s]
     type(atm2lnd_type)     , intent(in)  :: atm2lnd_inst
     type(canopystate_type) , intent(in)  :: canopystate_inst
-    type(waterstate_type)  , intent(in)  :: waterstate_inst
+    type(waterdiagnosticbulk_type)  , intent(in)  :: waterdiagnosticbulk_inst
     type(soilstate_type)   , intent(in)  :: soilstate_inst
     type(temperature_type) , intent(in)  :: temperature_inst
     !
@@ -4734,7 +4711,7 @@ contains
     !compute transpiration demand
     havegs=.true.
     call getqflx(p,c,gb_mol,gs_mol_sun,gs_mol_sha,qflx_sun,qflx_sha,qsatl,qaf,havegs, &
-         atm2lnd_inst, canopystate_inst, waterstate_inst, temperature_inst)
+         atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, temperature_inst)
     
     !calculate root water potential
     if ( abs(sum(k_soil_root(p,1:nlevsoi))) == 0._r8 ) then
@@ -4777,7 +4754,7 @@ contains
   
   !--------------------------------------------------------------------------------
   subroutine getqflx(p,c,gb_mol,gs_mol_sun,gs_mol_sha,qflx_sun,qflx_sha,qsatl,qaf,havegs, &
-       atm2lnd_inst, canopystate_inst, waterstate_inst, temperature_inst)
+       atm2lnd_inst, canopystate_inst, waterdiagnosticbulk_inst, temperature_inst)
     ! !DESCRIPTION:
     !  calculate sunlit and shaded transpiration using gb_MOL and gs_MOL
     ! !USES:
@@ -4798,7 +4775,7 @@ contains
     logical  , intent(in)     :: havegs     ! signals direction of calculation gs->qflx or qflx->gs
     type(atm2lnd_type)     , intent(in)  :: atm2lnd_inst
     type(canopystate_type) , intent(in)  :: canopystate_inst
-    type(waterstate_type)  , intent(in)  :: waterstate_inst
+    type(waterdiagnosticbulk_type)  , intent(in)  :: waterdiagnosticbulk_inst
     type(temperature_type) , intent(in)  :: temperature_inst
     !
     ! !LOCAL VARIABLES:
@@ -4814,7 +4791,7 @@ contains
          laisha        => canopystate_inst%laisha_patch         , & ! Input: [real(r8) (:)   ]  shaded leaf area
          elai          => canopystate_inst%elai_patch           , & ! Input: [real(r8) (:)   ]  one-sided leaf area index with burying by snow
          esai          => canopystate_inst%esai_patch           , & ! Input: [real(r8) (:)   ]  one-sided stem area index with burying by snow
-         fdry          => waterstate_inst%fdry_patch            , & ! Input: [real(r8) (:)   ]  fraction of foliage that is green and dry [-]
+         fdry          => waterdiagnosticbulk_inst%fdry_patch            , & ! Input: [real(r8) (:)   ]  fraction of foliage that is green and dry [-]
          forc_rho      => atm2lnd_inst%forc_rho_downscaled_col  , & ! Input: [real(r8) (:)   ]  density (kg/m**3)
          forc_pbot     => atm2lnd_inst%forc_pbot_downscaled_col , & ! Input: [real(r8) (:)   ]  atmospheric pressure (Pa)
          tgcm          => temperature_inst%thm_patch              & ! Input: [real(r8) (:)   ]  air temperature at agcm reference height (kelvin)
