@@ -105,6 +105,8 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 <!-- Irrigation default -->
 <irrigate use_crop=".true." phys="clm5_0" use_cndv=".false." sim_year_range="1850-2100">.true.</irrigate>
 <irrigate use_crop=".true." phys="clm5_0" use_cndv=".true."  sim_year_range="1850-2100">.false.</irrigate>
+<irrigate use_crop=".true." phys="clm5_0" use_cndv=".false." sim_year_range="2100-2300">.true.</irrigate>
+<irrigate use_crop=".true." phys="clm5_0" use_cndv=".true."  sim_year_range="2100-2300">.false.</irrigate>
 <irrigate use_crop=".true." phys="clm4_5"                    sim_year_range="1850-2100">.false.</irrigate>
 
 <irrigate use_crop=".true." >.false.</irrigate>
@@ -973,6 +975,8 @@ lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_1x1_urbanc_alpha_hist_16pfts_Ir
 
 <fsurdat hgrid="0.9x1.25"     sim_year="1850" use_crop=".false." irrigate=".true.">
 lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_16pfts_Irrig_CMIP6_simyr1850_c190214.nc</fsurdat>
+<fsurdat hgrid="0.23x0.31"     sim_year="1850" use_crop=".false." irrigate=".true.">
+lnd/clm2/surfdata_map/surfdata_0.23x0.31_hist_16pfts_Irrig_CMIP6_simyr1850_c191025.nc</fsurdat>
 <fsurdat hgrid="1.9x2.5"      sim_year="1850" use_crop=".false." >
 lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_1.9x2.5_hist_16pfts_Irrig_CMIP6_simyr1850_c190304.nc</fsurdat>
 <fsurdat hgrid="10x15"        sim_year="1850" use_crop=".false." irrigate=".true.">
@@ -1109,6 +1113,10 @@ lnd/clm2/surfdata_map/release-clm5.0.30/surfdata_ne0np4.CONUS.ne30x8_hist_78pfts
  use_crop=".true."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_0.9x1.25_SSP5-8.5_78pfts_CMIP6_simyr1850-2100_c190214.nc</flanduse_timeseries>
 <flanduse_timeseries hgrid="1.9x2.5"       sim_year_range="1850-2100" ssp_rcp="SSP5-8.5"
  use_crop=".true."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_1.9x2.5_SSP5-8.5_78pfts_CMIP6_simyr1850-2100_c190228.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="0.9x1.25"      sim_year_range="2100-2300" ssp_rcp="SSP5-8.5"
+ use_crop=".true."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_0.9x1.25_SSP5-8.5_78pfts_CMIP6_simyr1850-2100_c190214.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="1.9x2.5"       sim_year_range="2100-2300" ssp_rcp="SSP5-8.5"
+ use_crop=".true."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_1.9x2.5_SSP5-8.5_78pfts_CMIP6_simyr1850-2100_c190228.nc</flanduse_timeseries>
 <flanduse_timeseries hgrid="10x15"         sim_year_range="1850-2100" ssp_rcp="SSP5-8.5"
  use_crop=".true."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_10x15_SSP5-8.5_78pfts_CMIP6_simyr1850-2100_c190228.nc</flanduse_timeseries>
 <flanduse_timeseries hgrid="C24"           sim_year_range="1850-2100" ssp_rcp="SSP5-8.5"
@@ -1191,6 +1199,10 @@ lnd/clm2/surfdata_map/release-clm5.0.30/surfdata_ne0np4.CONUS.ne30x8_hist_78pfts
 <flanduse_timeseries hgrid="0.9x1.25"      sim_year_range="1850-2100" ssp_rcp="SSP5-8.5"
  use_crop=".false."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_0.9x1.25_SSP5-8.5_16pfts_Irrig_CMIP6_simyr1850-2100_c190214.nc</flanduse_timeseries>
 <flanduse_timeseries hgrid="1.9x2.5"       sim_year_range="1850-2100" ssp_rcp="SSP5-8.5"
+ use_crop=".false."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_1.9x2.5_SSP5-8.5_16pfts_Irrig_CMIP6_simyr1850-2100_c190228.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="0.9x1.25"      sim_year_range="2100-2300" ssp_rcp="SSP5-8.5"
+ use_crop=".false."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_0.9x1.25_SSP5-8.5_16pfts_Irrig_CMIP6_simyr1850-2100_c190214.nc</flanduse_timeseries>
+<flanduse_timeseries hgrid="1.9x2.5"       sim_year_range="2100-2300" ssp_rcp="SSP5-8.5"
  use_crop=".false."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_1.9x2.5_SSP5-8.5_16pfts_Irrig_CMIP6_simyr1850-2100_c190228.nc</flanduse_timeseries>
 <flanduse_timeseries hgrid="10x15"         sim_year_range="1850-2100" ssp_rcp="SSP5-8.5"
  use_crop=".false."   >lnd/clm2/surfdata_map/release-clm5.0.18/landuse.timeseries_10x15_SSP5-8.5_16pfts_Irrig_CMIP6_simyr1850-2100_c190228.nc</flanduse_timeseries>
@@ -1290,6 +1302,10 @@ lnd/clm2/surfdata_map/release-clm5.0.30/surfdata_ne0np4.CONUS.ne30x8_hist_78pfts
 <stream_year_first_ndep phys="clm5_0" use_cn=".true." sim_year_range="1850-2100"  >2015</stream_year_first_ndep>
 <stream_year_last_ndep  phys="clm5_0" use_cn=".true." sim_year_range="1850-2100"  >2101</stream_year_last_ndep>
 <model_year_align_ndep  phys="clm5_0" use_cn=".true." sim_year_range="1850-2100"  >2015</model_year_align_ndep>
+
+<stream_year_first_ndep phys="clm5_0" use_cn=".true." sim_year_range="2100-2300"  >2100</stream_year_first_ndep>
+<stream_year_last_ndep  phys="clm5_0" use_cn=".true." sim_year_range="2100-2300"  >2100</stream_year_last_ndep>
+<model_year_align_ndep  phys="clm5_0" use_cn=".true." sim_year_range="2100-2300"  >2100</model_year_align_ndep>
 
 <stream_year_first_ndep use_cn=".true."   sim_year="2010" >2010</stream_year_first_ndep>
 <stream_year_last_ndep  use_cn=".true."   sim_year="2010" >2010</stream_year_last_ndep>
@@ -1429,6 +1445,10 @@ lnd/clm2/surfdata_map/release-clm5.0.30/surfdata_ne0np4.CONUS.ne30x8_hist_78pfts
 <stream_year_last_popdens  phys="clm5_0" cnfireson=".true." sim_year_range="1850-2100"  >2100</stream_year_last_popdens>
 <model_year_align_popdens  phys="clm5_0" cnfireson=".true." sim_year_range="1850-2100"  >2015</model_year_align_popdens>
 
+<stream_year_first_popdens phys="clm5_0" cnfireson=".true." sim_year_range="2100-2300"  >2100</stream_year_first_popdens>
+<stream_year_last_popdens  phys="clm5_0" cnfireson=".true." sim_year_range="2100-2300"  >2100</stream_year_last_popdens>
+<model_year_align_popdens  phys="clm5_0" cnfireson=".true." sim_year_range="2100-2300"  >2100</model_year_align_popdens>
+
 <stream_year_first_popdens use_cn=".true."   sim_year="2010" >2010</stream_year_first_popdens>
 <stream_year_last_popdens  use_cn=".true."   sim_year="2010" >2010</stream_year_last_popdens>
 
@@ -1479,6 +1499,10 @@ lnd/clm2/surfdata_map/release-clm5.0.30/surfdata_ne0np4.CONUS.ne30x8_hist_78pfts
 <stream_year_first_urbantv phys="clm5_0" sim_year_range="1850-2100" >2015</stream_year_first_urbantv>
 <stream_year_last_urbantv  phys="clm5_0" sim_year_range="1850-2100" >2106</stream_year_last_urbantv>
 <model_year_align_urbantv  phys="clm5_0" sim_year_range="1850-2100" >2015</model_year_align_urbantv>
+
+<stream_year_first_urbantv phys="clm5_0" sim_year_range="2100-2300" >2100</stream_year_first_urbantv>
+<stream_year_last_urbantv  phys="clm5_0" sim_year_range="2100-2300" >2100</stream_year_last_urbantv>
+<model_year_align_urbantv  phys="clm5_0" sim_year_range="2100-2300" >2100</model_year_align_urbantv>
 
 <stream_year_first_urbantv phys="clm4_5" sim_year_range="1850-2100" >2015</stream_year_first_urbantv>
 <stream_year_last_urbantv  phys="clm4_5" sim_year_range="1850-2100" >2106</stream_year_last_urbantv>
