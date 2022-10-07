@@ -51,8 +51,11 @@ module load ncarcompilers
 module load netcdf
 
 module load nco
-module load python
 module load ncl
+
+module load conda
+$CESMDATAROOT/py_env_create
+conda activate ctsm_py
 
 
 ##omp threads
@@ -114,8 +117,10 @@ module load netcdf
 module load openmpi
 
 module load nco
-module load python
+module load conda
 module load ncl
+$CESMDATAROOT/py_env_create
+conda activate ctsm_py
 
 
 ##omp threads
@@ -214,6 +219,9 @@ module purge
 module load compiler/intel
 module load tool/nco
 module load tool/netcdf
+module load lang/python
+$CESMDATAROOT/py_env_create
+conda activate ctsm_py
 
 export NETCDF_DIR=\$NETCDF_PATH
 export INC_NETCDF=\${NETCDF_PATH}/include
@@ -294,6 +302,9 @@ module purge
 module load compiler/intel
 module load tool/nco
 module load tool/netcdf
+module load lang/python
+$CESMDATAROOT/py_env_create
+conda activate ctsm_py
 
 export NETCDF_DIR=\$NETCDF_PATH
 export INC_NETCDF=\${NETCDF_PATH}/include
