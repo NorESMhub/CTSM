@@ -7,12 +7,13 @@ module SoilBiogeochemNitrogenFluxType
   use clm_varpar                         , only : nlevdecomp_full, nlevdecomp
   use clm_varcon                         , only : spval, ispval, dzsoi_decomp
   use decompMod                          , only : bounds_type
-  use clm_varctl                         , only : use_nitrif_denitrif, use_vertsoilc, use_crop
+  use clm_varctl                         , only : use_nitrif_denitrif, use_crop
   use CNSharedParamsMod                  , only : use_fun
-  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
+  use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con, use_soil_matrixcn
   use abortutils                         , only : endrun
   use LandunitType                       , only : lun                
   use ColumnType                         , only : col                
+  use SparseMatrixMultiplyMod            , only : sparse_matrix_type, diag_matrix_type, vector_type
   ! 
   ! !PUBLIC TYPES:
   implicit none
@@ -127,6 +128,9 @@ module SoilBiogeochemNitrogenFluxType
      real(r8), pointer :: decomp_npools_sourcesink_col              (:,:,:) ! col (gN/m3) change in decomposing n pools 
                                                                             ! (sum of all additions and subtractions from stateupdate1).  
           real(r8), pointer :: sminn_to_plant_fun_vr_col                 (:,:)   ! col total layer soil N uptake of FUN  (gN/m2/s)
+
+     ! track tradiagonal matrix  
+
    contains
 
      procedure , public  :: Init   
@@ -167,12 +171,10 @@ contains
     type(bounds_type) , intent(in) :: bounds  
     !
     ! !LOCAL VARIABLES:
-    integer           :: begc,endc
-!   integer           :: begp,endp
+    integer           :: begc,endc    ! column begin and end indices
     !------------------------------------------------------------------------
 
     begc = bounds%begc; endc = bounds%endc
-!   begp = bounds%begp; endp = bounds%endp
     allocate(this%ndep_to_sminn_col                 (begc:endc))                   ; this%ndep_to_sminn_col          (:)   = nan
     allocate(this%nfix_to_sminn_col                 (begc:endc))                   ; this%nfix_to_sminn_col          (:)   = nan
     allocate(this%ffix_to_sminn_col                 (begc:endc))                   ; this%ffix_to_sminn_col          (:)   = nan
@@ -272,7 +274,9 @@ contains
 
     allocate(this%decomp_npools_sourcesink_col (begc:endc,1:nlevdecomp_full,1:ndecomp_pools))
     this%decomp_npools_sourcesink_col (:,:,:) = nan
-
+    ! Allocate soil Matrix setug
+    if(use_soil_matrixcn)then
+    end if
   end subroutine InitAllocate
 
   !------------------------------------------------------------------------
@@ -340,7 +344,7 @@ contains
           data1dptr => this%decomp_cascade_sminn_flux_col(:,l)
           if ( decomp_cascade_con%cascade_receiver_pool(l) /= 0 ) then
              fieldname = 'SMINN_TO_'//&
-                  trim(decomp_cascade_con%decomp_pool_name_history(decomp_cascade_con%cascade_receiver_pool(l)))//'N_'//&
+                  trim(decomp_cascade_con%decomp_pool_name_short(decomp_cascade_con%cascade_receiver_pool(l)))//'N_'//&
                   trim(decomp_cascade_con%decomp_pool_name_short(decomp_cascade_con%cascade_donor_pool(l)))
              longname =  'mineral N flux for decomp. of '&
                   //trim(decomp_cascade_con%decomp_pool_name_history(decomp_cascade_con%cascade_donor_pool(l)))//&
@@ -377,7 +381,7 @@ contains
              data2dptr => this%decomp_cascade_sminn_flux_vr_col(:,:,l)
              if ( decomp_cascade_con%cascade_receiver_pool(l) /= 0 ) then
                 fieldname = 'SMINN_TO_'&
-                     //trim(decomp_cascade_con%decomp_pool_name_history(decomp_cascade_con%cascade_receiver_pool(l)))//'N_'//&
+                     //trim(decomp_cascade_con%decomp_pool_name_short(decomp_cascade_con%cascade_receiver_pool(l)))//'N_'//&
                      trim(decomp_cascade_con%decomp_pool_name_short(decomp_cascade_con%cascade_donor_pool(l)))//trim(vr_suffix)
                 longname =  'mineral N flux for decomp. of '&
                      //trim(decomp_cascade_con%decomp_pool_name_history(decomp_cascade_con%cascade_donor_pool(l)))//&
@@ -991,6 +995,9 @@ contains
           this%decomp_npools_leached_col(i,k) = value_column
        end do
     end do
+
+    if(use_soil_matrixcn)then
+    end if
 
     do k = 1, ndecomp_pools
        do j = 1, nlevdecomp_full
