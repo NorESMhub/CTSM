@@ -1,3 +1,5 @@
+#CTSM project board [link](https://github.com/orgs/NorESMhub/projects/5)
+
 # Branches in NorESMhub/CTSM
 
 This repository has the following CTSM branches intended to facilitate working with NorESM2:
