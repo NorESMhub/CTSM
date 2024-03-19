@@ -1540,9 +1540,14 @@ module CLMFatesInterfaceMod
              z0m(p)    = this%fates(nc)%bc_out(s)%z0m_pa(ifp)
              displa(p) = this%fates(nc)%bc_out(s)%displa_pa(ifp)
              dleaf_patch(p) = this%fates(nc)%bc_out(s)%dleaf_pa(ifp)
-          end do ! veg pach
 
-          if(abs(areacheck - 1.0_r8).gt.1.e-9_r8)then
+         if(this%fates(nc)%bc_out(s)%fire_emissions_pa(ifp,1).gt.0_r8)then
+            write(*,*) 'positive fire emissions',this%fates(nc)%bc_out(s)%fire_emissions_pa(ifp,1)
+         endif
+
+         end do ! veg pach
+
+         if(abs(areacheck - 1.0_r8).gt.1.e-9_r8)then
             write(iulog,*) 'area wrong in interface',areacheck - 1.0_r8
             call endrun(msg=errMsg(sourcefile, __LINE__))
           endif
@@ -3113,7 +3118,7 @@ module CLMFatesInterfaceMod
    use FatesConstantsMod, only : fates_short_string_length, fates_long_string_length
    use FatesIOVariableKindMod, only : site_r8, site_soil_r8, site_size_pft_r8
    use FatesIOVariableKindMod, only : site_size_r8, site_pft_r8, site_age_r8
-   use FatesIOVariableKindMod, only : site_coage_r8, site_coage_pft_r8
+   use FatesIOVariableKindMod, only : site_coage_r8, site_coage_pft_r8, site_emis_r8
    use FatesIOVariableKindMod, only : site_fuel_r8, site_cwdsc_r8, site_scag_r8
    use FatesIOVariableKindMod, only : site_scagpft_r8, site_agepft_r8
    use FatesIOVariableKindMod, only : site_can_r8, site_cnlf_r8, site_cnlfpft_r8
@@ -3218,7 +3223,7 @@ module CLMFatesInterfaceMod
                               set_lake=0._r8,set_urb=0._r8)
 
         case(site_soil_r8, site_size_pft_r8, site_size_r8, site_pft_r8, &
-             site_age_r8, site_height_r8, site_coage_r8,site_coage_pft_r8, &
+             site_age_r8, site_emis_r8, site_height_r8, site_coage_r8,site_coage_pft_r8, &
              site_fuel_r8, site_cwdsc_r8, site_clscpf_r8, &
              site_can_r8,site_cnlf_r8, site_cnlfpft_r8, site_scag_r8, &
              site_scagpft_r8, site_agepft_r8, site_elem_r8, site_elpft_r8, &
