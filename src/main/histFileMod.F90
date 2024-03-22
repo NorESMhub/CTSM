@@ -24,6 +24,7 @@ module histFileMod
   use PatchType      , only : patch
   use EDParamsMod    , only : nclmax
   use EDParamsMod    , only : nlevleaf
+  use EDParamsMod    , only : num_emission_compounds
   use FatesInterfaceTypesMod , only : nlevsclass, nlevage, nlevcoage
   use FatesInterfaceTypesMod , only : nlevheight
   use FatesInterfaceTypesMod , only : nlevdamage
@@ -2498,6 +2499,7 @@ contains
        call ncd_defdim(lnfid, 'fates_levage', nlevage, dimid)
        call ncd_defdim(lnfid, 'fates_levheight', nlevheight, dimid)
        call ncd_defdim(lnfid, 'fates_levfuel', nfsc, dimid)
+       call ncd_defdim(lnfid, 'fates_levemis', num_emission_compounds, dimid)
        call ncd_defdim(lnfid, 'fates_levcwdsc', ncwd, dimid)
        call ncd_defdim(lnfid, 'fates_levscpf', nlevsclass*numpft_fates, dimid)
        call ncd_defdim(lnfid, 'fates_levcapf', nlevcoage*numpft_fates, dimid)
@@ -3045,6 +3047,7 @@ contains
     use FatesInterfaceTypesMod, only : fates_hdim_agmap_levagepft
     use FatesInterfaceTypesMod, only : fates_hdim_pftmap_levagepft
     use FatesInterfaceTypesMod, only : fates_hdim_levfuel
+    use FatesInterfaceTypesMod, only : fates_hdim_levemis    
     use FatesInterfaceTypesMod, only : fates_hdim_levdamage
     use FatesInterfaceTypesMod, only : fates_hdim_levcwdsc
     use FatesInterfaceTypesMod, only : fates_hdim_levcan
@@ -3155,6 +3158,8 @@ contains
                   long_name='FATES pft number', ncid=nfid(t))
              call ncd_defvar(varname='fates_levfuel',xtype=ncd_int, dim1name='fates_levfuel', &
                   long_name='FATES fuel index', ncid=nfid(t))
+             call ncd_defvar(varname='fates_levemis',xtype=ncd_int, dim1name='fates_levemis', &
+                  long_name='FATES fire emissions  index', ncid=nfid(t))             
              call ncd_defvar(varname='fates_levcwdsc',xtype=ncd_int, dim1name='fates_levcwdsc', &
                   long_name='FATES cwd size class', ncid=nfid(t))
              call ncd_defvar(varname='fates_levcan',xtype=ncd_int, dim1name='fates_levcan', &
@@ -3227,6 +3232,7 @@ contains
              call ncd_io(varname='fates_levheight',data=fates_hdim_levheight, ncid=nfid(t), flag='write')
              call ncd_io(varname='fates_levpft',data=fates_hdim_levpft, ncid=nfid(t), flag='write')
              call ncd_io(varname='fates_levfuel',data=fates_hdim_levfuel, ncid=nfid(t), flag='write')
+             call ncd_io(varname='fates_levemis',data=fates_hdim_levemis, ncid=nfid(t), flag='write')   
              call ncd_io(varname='fates_levcdam',data=fates_hdim_levdamage, ncid=nfid(t), flag='write')
              call ncd_io(varname='fates_levcwdsc',data=fates_hdim_levcwdsc, ncid=nfid(t), flag='write')
              call ncd_io(varname='fates_levcan',data=fates_hdim_levcan, ncid=nfid(t), flag='write')
@@ -5520,6 +5526,8 @@ contains
        num2d = nlevage
     case ('fates_levheight')
        num2d = nlevheight
+    case ('fates_levemis')
+       num2d = num_emission_compounds
     case ('fates_levfuel')
        num2d = nfsc
     case ('fates_levcwdsc')

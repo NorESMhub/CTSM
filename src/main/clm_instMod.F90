@@ -592,7 +592,9 @@ contains
             soilstate_inst=soilstate_inst, &
             active_layer_inst=active_layer_inst, &
             soilbiogeochem_carbonflux_inst=soilbiogeochem_carbonflux_inst, & 
-            soilbiogeochem_nitrogenflux_inst=soilbiogeochem_nitrogenflux_inst)
+            soilbiogeochem_nitrogenflux_inst=soilbiogeochem_nitrogenflux_inst,&
+            fireemis_inst=fireemis_inst&
+            )
 
     end if
 

@@ -43,6 +43,7 @@ module CLMFatesInterfaceMod
    use TemperatureType   , only : temperature_type
    use EnergyFluxType    , only : energyflux_type
    use SoilStateType     , only : soilstate_type
+   use CNFireEmissionsMod, only : fireemis_type
    use CNProductsMod     , only : cn_products_type
    use clm_varctl        , only : iulog
    use clm_varctl        , only : fates_parteh_mode
@@ -112,7 +113,9 @@ module CLMFatesInterfaceMod
    use clm_varcon        , only : dzsoi_decomp
    use FuncPedotransferMod, only: get_ipedof
    use CLMFatesParamInterfaceMod, only: fates_param_reader_ctsm_impl
-!   use SoilWaterPlantSinkMod, only : Compute_EffecRootFrac_And_VertTranSink_Default
+   use EDParamsMod,            only : num_emission_compounds ! is this in the right place? 
+   
+   !   use SoilWaterPlantSinkMod, only : Compute_EffecRootFrac_And_VertTranSink_Default
 
    ! Used FATES Modules
    use FatesInterfaceMod , only : fates_interface_type
@@ -871,7 +874,7 @@ module CLMFatesInterfaceMod
          atm2lnd_inst, soilstate_inst, temperature_inst, active_layer_inst, &
          waterstatebulk_inst, waterdiagnosticbulk_inst, wateratm2lndbulk_inst, &
          canopystate_inst, soilbiogeochem_carbonflux_inst, frictionvel_inst, &
-         soil_water_retention_curve)
+         soil_water_retention_curve, fireemis_inst)
 
       ! This wrapper is called daily from clm_driver
       ! This wrapper calls ed_driver, which is the daily dynamics component of FATES
@@ -895,6 +898,7 @@ module CLMFatesInterfaceMod
       type(waterdiagnosticbulk_type)   , intent(inout)        :: waterdiagnosticbulk_inst
       type(wateratm2lndbulk_type)   , intent(inout)        :: wateratm2lndbulk_inst
       type(canopystate_type)  , intent(inout)        :: canopystate_inst
+      type(fireemis_type),      intent(inout)        :: fireemis_inst
       type(soilbiogeochem_carbonflux_type), intent(inout) :: soilbiogeochem_carbonflux_inst
       type(frictionvel_type)  , intent(inout)        :: frictionvel_inst
       class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
@@ -1138,6 +1142,7 @@ module CLMFatesInterfaceMod
                                          waterdiagnosticbulk_inst,  &
                                          canopystate_inst, &
                                          soilbiogeochem_carbonflux_inst, &
+                                         fireemis_inst, &
                                          .false.)
 
       ! ---------------------------------------------------------------------------------
@@ -1314,7 +1319,7 @@ module CLMFatesInterfaceMod
    
    subroutine wrap_update_hlmfates_dyn(this, nc, bounds_clump,      &
         waterdiagnosticbulk_inst, canopystate_inst, &
-        soilbiogeochem_carbonflux_inst, is_initing_from_restart)
+        soilbiogeochem_carbonflux_inst, fireemis_inst, is_initing_from_restart)
 
       ! ---------------------------------------------------------------------------------
       ! This routine handles the updating of vegetation canopy diagnostics, (such as lai)
@@ -1328,7 +1333,7 @@ module CLMFatesInterfaceMod
      type(waterdiagnosticbulk_type)   , intent(inout)        :: waterdiagnosticbulk_inst
      type(canopystate_type)  , intent(inout)        :: canopystate_inst
      type(soilbiogeochem_carbonflux_type), intent(inout) :: soilbiogeochem_carbonflux_inst
-                   
+     type(fireemis_type),                  intent(inout) :: fireemis_inst                   
 
      ! is this being called during a read from restart sequence (if so then use the restarted fates
      ! snow depth variable rather than the CLM variable).
@@ -1340,7 +1345,8 @@ module CLMFatesInterfaceMod
      integer :: s       ! site index
      integer :: c       ! column index
      integer :: g       ! grid cell
-
+     integer :: e       ! emission compound
+     
      logical :: dispersal_flag ! local flag to pass to the inside of the site loop
      real(r8) :: areacheck
      call t_startf('fates_wrap_update_hlmfates_dyn')
@@ -1540,9 +1546,16 @@ module CLMFatesInterfaceMod
              z0m(p)    = this%fates(nc)%bc_out(s)%z0m_pa(ifp)
              displa(p) = this%fates(nc)%bc_out(s)%displa_pa(ifp)
              dleaf_patch(p) = this%fates(nc)%bc_out(s)%dleaf_pa(ifp)
-          end do ! veg pach
 
-          if(abs(areacheck - 1.0_r8).gt.1.e-9_r8)then
+             ! Unpack FATES fire emissions into CTSM side array.
+             fireemis_inst%fates_fire_emission_height_patch(p)=this%fates(nc)%bc_out(s)%fire_emission_height_pa(ifp)
+             do e = 1,num_emission_compounds
+               fireemis_inst%fates_fire_emissions_patch(p,e) = this%fates(nc)%bc_out(s)%fire_emissions_pa(p,e)
+             end do
+                
+         end do ! veg pach
+
+         if(abs(areacheck - 1.0_r8).gt.1.e-9_r8)then
             write(iulog,*) 'area wrong in interface',areacheck - 1.0_r8
             call endrun(msg=errMsg(sourcefile, __LINE__))
           endif
@@ -1559,7 +1572,7 @@ module CLMFatesInterfaceMod
    subroutine restart( this, bounds_proc, ncid, flag, waterdiagnosticbulk_inst, &
         waterstatebulk_inst, canopystate_inst, soilstate_inst, &
         active_layer_inst, soilbiogeochem_carbonflux_inst, &
-        soilbiogeochem_nitrogenflux_inst)
+        soilbiogeochem_nitrogenflux_inst, fireemis_inst)
 
       ! ---------------------------------------------------------------------------------
       ! The ability to restart the model is handled through three different types of calls
@@ -1593,9 +1606,11 @@ module CLMFatesInterfaceMod
       type(waterstatebulk_type)      , intent(inout) :: waterstatebulk_inst
       type(canopystate_type)         , intent(inout) :: canopystate_inst
       type(soilstate_type)           , intent(inout) :: soilstate_inst
+
       type(active_layer_type)        , intent(in)    :: active_layer_inst
       type(soilbiogeochem_carbonflux_type), intent(inout) :: soilbiogeochem_carbonflux_inst
       type(soilbiogeochem_nitrogenflux_type), intent(inout) :: soilbiogeochem_nitrogenflux_inst
+      type(fireemis_type),                    intent(inout) :: fireemis_inst
       
       ! Locals
       type(bounds_type) :: bounds_clump
@@ -1871,7 +1886,7 @@ module CLMFatesInterfaceMod
                ! ------------------------------------------------------------------------
                call this%wrap_update_hlmfates_dyn(nc,bounds_clump, &
                      waterdiagnosticbulk_inst,canopystate_inst, &
-                     soilbiogeochem_carbonflux_inst, .true.)
+                     soilbiogeochem_carbonflux_inst, fireemis_inst, .true.)
 
                ! ------------------------------------------------------------------------
                ! Update the 3D patch level radiation absorption fractions
@@ -1913,7 +1928,7 @@ module CLMFatesInterfaceMod
    !=====================================================================================
 
    subroutine init_coldstart(this, waterstatebulk_inst, waterdiagnosticbulk_inst, &
-        canopystate_inst, soilstate_inst, soilbiogeochem_carbonflux_inst)
+        canopystate_inst, soilstate_inst, soilbiogeochem_carbonflux_inst, fireemis_inst)
 
 
      ! Arguments
@@ -1923,7 +1938,8 @@ module CLMFatesInterfaceMod
      type(canopystate_type)         , intent(inout) :: canopystate_inst
      type(soilstate_type)           , intent(inout) :: soilstate_inst
      type(soilbiogeochem_carbonflux_type), intent(inout) :: soilbiogeochem_carbonflux_inst
-
+     type(fireemis_type),                  intent(inout) :: fireemis_inst
+     
      ! locals
      integer                                        :: nclumps
      integer                                        :: nc
@@ -2062,7 +2078,7 @@ module CLMFatesInterfaceMod
            ! ------------------------------------------------------------------------
            call this%wrap_update_hlmfates_dyn(nc,bounds_clump, &
                 waterdiagnosticbulk_inst,canopystate_inst, &
-                soilbiogeochem_carbonflux_inst, .false.)
+                soilbiogeochem_carbonflux_inst, fireemis_inst,.false.)
 
            ! ------------------------------------------------------------------------
            ! Update history IO fields that depend on ecosystem dynamics
@@ -3113,7 +3129,7 @@ module CLMFatesInterfaceMod
    use FatesConstantsMod, only : fates_short_string_length, fates_long_string_length
    use FatesIOVariableKindMod, only : site_r8, site_soil_r8, site_size_pft_r8
    use FatesIOVariableKindMod, only : site_size_r8, site_pft_r8, site_age_r8
-   use FatesIOVariableKindMod, only : site_coage_r8, site_coage_pft_r8
+   use FatesIOVariableKindMod, only : site_coage_r8, site_coage_pft_r8, site_emis_r8
    use FatesIOVariableKindMod, only : site_fuel_r8, site_cwdsc_r8, site_scag_r8
    use FatesIOVariableKindMod, only : site_scagpft_r8, site_agepft_r8
    use FatesIOVariableKindMod, only : site_can_r8, site_cnlf_r8, site_cnlfpft_r8
@@ -3218,7 +3234,7 @@ module CLMFatesInterfaceMod
                               set_lake=0._r8,set_urb=0._r8)
 
         case(site_soil_r8, site_size_pft_r8, site_size_r8, site_pft_r8, &
-             site_age_r8, site_height_r8, site_coage_r8,site_coage_pft_r8, &
+             site_age_r8, site_emis_r8, site_height_r8, site_coage_r8,site_coage_pft_r8, &
              site_fuel_r8, site_cwdsc_r8, site_clscpf_r8, &
              site_can_r8,site_cnlf_r8, site_cnlfpft_r8, site_scag_r8, &
              site_scagpft_r8, site_agepft_r8, site_elem_r8, site_elpft_r8, &
