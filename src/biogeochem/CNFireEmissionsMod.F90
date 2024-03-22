@@ -7,8 +7,10 @@ module CNFireEmissionsMod
   ! Created by F. Vitt, and revised by F. Li
   ! !USES:
   use shr_kind_mod, only : r8 => shr_kind_r8
+  use clm_varctl        , only : use_fates
   use abortutils,   only : endrun
   use PatchType,    only : patch
+  use EDParamsMod,  only : num_emission_compounds ! for FATES emissions. 
   use decompMod,    only : bounds_type
   use shr_fire_emis_mod,  only : shr_fire_emis_comps_n, shr_fire_emis_comp_t, shr_fire_emis_linkedlist
   use shr_fire_emis_mod,  only : shr_fire_emis_mechcomps_n, shr_fire_emis_mechcomps
@@ -27,6 +29,8 @@ module CNFireEmissionsMod
   ! !PUBLIC TYPES:
   type, public :: fireemis_type
      real(r8),     pointer, public  :: fireflx_patch(:,:) ! carbon flux from fire sources (kg/m2/sec)
+     real(r8),     pointer, public  :: fates_fire_emissions_patch(:,:) ! FATES calculated emissions from fire sources (kg/m2/sec)
+     real(r8),     pointer, public  :: fates_fire_emission_height_patch(:) ! FATES calculated emissions from fire sources (m)     
      real(r8),     pointer, public  :: ztop_patch(:)      ! height of the smoke plume (meters)
      type(emis_t), pointer, private :: comp(:)            ! fire emissions component (corresponds to emis factors table input file)
      type(emis_t), pointer, private :: mech(:)            ! cam-chem mechism species emissions
@@ -58,18 +62,19 @@ contains
     real(r8) :: molec_wght
     type(shr_fire_emis_comp_t), pointer :: emis_cmp
 
-    if ( shr_fire_emis_mechcomps_n < 1) return
+    if ( shr_fire_emis_mechcomps_n > 0) then
+   
+       call fire_emis_factors_init( shr_fire_emis_factors_file )
 
-    call fire_emis_factors_init( shr_fire_emis_factors_file )
-
-    emis_cmp => shr_fire_emis_linkedlist
-    do while(associated(emis_cmp))
-       allocate(emis_cmp%emis_factors(maxveg))
-       call fire_emis_factors_get( trim(emis_cmp%name), factors, molec_wght )
-       emis_cmp%emis_factors = factors*1.e-3_r8 ! convert g/kg dry fuel to kg/kg
-       emis_cmp%molec_weight = molec_wght
-       emis_cmp => emis_cmp%next_emiscomp
-    enddo
+       emis_cmp => shr_fire_emis_linkedlist
+       do while(associated(emis_cmp))
+          allocate(emis_cmp%emis_factors(maxveg))
+          call fire_emis_factors_get( trim(emis_cmp%name), factors, molec_wght )
+          emis_cmp%emis_factors = factors*1.e-3_r8 ! convert g/kg dry fuel to kg/kg
+          emis_cmp%molec_weight = molec_wght
+          emis_cmp => emis_cmp%next_emiscomp
+       enddo
+    endif 
 
     call this%InitAllocate(bounds)
     call this%InitHistory(bounds)
@@ -97,14 +102,21 @@ contains
     allocate(this%totfire%emis(beg:end))
     this%totfire%emis(beg:end) = nan
 
+    if(use_fates)then
+       allocate(this%fates_fire_emissions_patch(beg:end,1:num_emission_compounds))
+       allocate(this%fates_fire_emission_height_patch(beg:end))
+
+       this%fates_fire_emissions_patch(beg:end,:) = spval
+       this%fates_fire_emission_height_patch(beg:end) = spval
+    endif
+    
     if (shr_fire_emis_mechcomps_n>0) then
        allocate(this%ztop_patch(beg:end))
        this%ztop_patch(beg:end) = spval
-
        allocate(this%fireflx_patch(beg:end,shr_fire_emis_mechcomps_n))
        this%fireflx_patch(beg:end,:) = spval
+      allocate(this%mech(shr_fire_emis_mechcomps_n))
 
-       allocate(this%mech(shr_fire_emis_mechcomps_n))
        do i = 1, shr_fire_emis_mechcomps_n
           allocate(this%mech(i)%emis(beg:end))
           this%mech(i)%emis(beg:end) = nan
@@ -210,6 +222,14 @@ contains
     real(r8) :: epsilon                 ! emission factor [ug m-2 h-1]
     integer  :: i, ii, icomp, imech, n_emis_comps, l, j
 
+    
+    ! initialize to zero ...
+    if ( use_fates) then ! always initialize the fates emission variables for now. 
+         fireemis_inst%fates_fire_emissions_patch(bounds%begp:bounds%endp,:) = 0._r8
+         fireemis_inst%fates_fire_emission_height_patch(bounds%begp:bounds%endp) =  0._r8
+      endif
+
+    
     if ( shr_fire_emis_mechcomps_n < 1) return
 
     associate( &
@@ -221,8 +241,11 @@ contains
          )
 
       ! initialize to zero ...
-      fire_emis(bounds%begp:bounds%endp,:) = 0._r8
-      totfire%emis(bounds%begp:bounds%endp) =  0._r8
+      if ( use_fates) then
+        fire_emis(bounds%begp:bounds%endp,:) = 0._r8
+        totfire%emis(bounds%begp:bounds%endp) =  0._r8
+      endif 
+
       ztop(bounds%begp:bounds%endp) =  0._r8
 
       do i = 1, shr_fire_emis_mechcomps_n
