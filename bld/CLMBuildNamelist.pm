@@ -97,7 +97,7 @@ OPTIONS
 				        CENTURY or MIMICS decomposition
                                         This toggles on the namelist variables:
 				        use_fates. use_lch4 and use_nitrif_denitrif are optional
-				 
+
                               (Only for CLM4.5/CLM5.0)
      -[no-]chk_res            Also check [do NOT check] to make sure the resolution and
                               land-mask is valid.
@@ -1010,7 +1010,7 @@ sub setup_cmdl_fire_light_res {
      if ( ! &value_is_true($nl_flags->{'neon'}) ) {
          if ( defined($opts->{'clm_usr_name'}) ) {
             $log->warning("The NEON lightning dataset does NOT cover the entire globe, make sure it covers the region for your grid");
-         } else { 
+         } else {
             $log->fatal_error("The NEON lightning dataset can NOT be used for global grids or regions or points outside of its area as it does NOT cover the entire globe.");
          }
      }
@@ -2260,7 +2260,7 @@ sub setup_logic_crop_inparm {
      }
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, "initial_seed_at_planting",
                  'use_crop'=>$nl->get_value('use_crop') );
-     
+
      my $crop_residue_removal_frac = $nl->get_value('crop_residue_removal_frac');
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'crop_residue_removal_frac' );
      if ( $crop_residue_removal_frac < 0.0 or $crop_residue_removal_frac > 1.0 ) {
@@ -2454,7 +2454,7 @@ sub setup_logic_surface_dataset {
      }
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, $var,
                  'hgrid'=>$nl_flags->{'res'}, 'ssp_rcp'=>$nl_flags->{'ssp_rcp'}, 'use_vichydro'=>$nl_flags->{'use_vichydro'},
-                 'sim_year'=>$nl_flags->{'sim_year'}, 'irrigate'=>".true.", 'use_fates'=>$nl_flags->{'use_fates'}, 
+                 'sim_year'=>$nl_flags->{'sim_year'}, 'irrigate'=>".true.", 'use_fates'=>$nl_flags->{'use_fates'},
                  'neon'=>$nl_flags->{'neon'}, 'neonsite'=>$nl_flags->{'neonsite'},
                  'use_crop'=>$nl_flags->{'use_crop'}, 'glc_nec'=>$nl_flags->{'glc_nec'} );
   }
@@ -3119,7 +3119,7 @@ sub setup_logic_supplemental_nitrogen {
       add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl,
 		  'suplnitro', 'use_fates'=>$nl_flags->{'use_fates'});
   }
-  
+
   #
   # Error checking for suplnitro
   #
@@ -3629,10 +3629,10 @@ sub setup_logic_nitrogen_deposition {
                 'use_cn'=>$nl_flags->{'use_cn'}, 'hgrid'=>$nl_flags->{'res'},
                 'clm_accelerated_spinup'=>$nl_flags->{'clm_accelerated_spinup'} );
     add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'ndep_taxmode', 'phys'=>$nl_flags->{'phys'},
-		'use_cn'=>$nl_flags->{'use_cn'}, 
+		'use_cn'=>$nl_flags->{'use_cn'},
 		'lnd_tuning_mode'=>$nl_flags->{'lnd_tuning_mode'} );
     add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'ndep_varlist', 'phys'=>$nl_flags->{'phys'},
-		'use_cn'=>$nl_flags->{'use_cn'}, 
+		'use_cn'=>$nl_flags->{'use_cn'},
 		'lnd_tuning_mode'=>$nl_flags->{'lnd_tuning_mode'} );
     add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_year_first_ndep', 'phys'=>$nl_flags->{'phys'},
                 'use_cn'=>$nl_flags->{'use_cn'}, 'sim_year'=>$nl_flags->{'sim_year'},
@@ -3918,7 +3918,10 @@ sub setup_logic_fire_emis {
 
   if ($opts->{'fire_emis'} ) {
      if ( &value_is_true( $nl_flags->{'use_fates'} ) ) {
-        $log->warning( "Fire emission factor file will NOT be used when FATES is on.\n" );
+        $log->message( "Fire emission factor file will NOT be used when FATES is on.\n" );
+        if ( $nl->get_value('fates_spitfire_mode') == 0) {
+            $log->fatal_error("cannot have fire_emis and use_fates set if fates does not have spitfire mode on")
+        }
      } else {
         add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'fire_emis_factors_file');
      }
@@ -4423,8 +4426,8 @@ sub setup_logic_fates {
         my $suplnitro = $nl->get_value('suplnitro');
         my $parteh_mode = $nl->get_value('fates_parteh_mode');
         if ( ($parteh_mode == 1) &&  ($suplnitro !~ /ALL/) && not &value_is_true( $nl_flags->{'use_fates_sp'}) ) {
-          $log->fatal_error("supplemental Nitrogen (suplnitro) is NOT set to ALL, FATES is on, " . 
-                            "but and FATES-SP is not active, but fates_parteh_mode is 1, so Nitrogen is not active" . 
+          $log->fatal_error("supplemental Nitrogen (suplnitro) is NOT set to ALL, FATES is on, " .
+                            "but and FATES-SP is not active, but fates_parteh_mode is 1, so Nitrogen is not active" .
                             "Change suplnitro back to ALL");
         }
         #
