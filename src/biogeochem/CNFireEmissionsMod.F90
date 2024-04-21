@@ -12,12 +12,14 @@ module CNFireEmissionsMod
   use decompMod,    only : bounds_type
   use shr_fire_emis_mod,  only : shr_fire_emis_comps_n, shr_fire_emis_comp_t, shr_fire_emis_linkedlist
   use shr_fire_emis_mod,  only : shr_fire_emis_mechcomps_n, shr_fire_emis_mechcomps
+  use clm_varctl,   only : use_fates_bgc
   !
   implicit none
   private
   !
   ! !PUBLIC MEMBER FUNCTIONS:
    public :: CNFireEmisUpdate
+   public :: FatesFireEmisUpdate
   !
   ! !PRIVATE TYPES:
   type, private :: emis_t
@@ -60,20 +62,26 @@ contains
 
     if ( shr_fire_emis_mechcomps_n < 1) return
 
-    call fire_emis_factors_init( shr_fire_emis_factors_file )
-
-    emis_cmp => shr_fire_emis_linkedlist
-    do while(associated(emis_cmp))
-       allocate(emis_cmp%emis_factors(maxveg))
-       call fire_emis_factors_get( trim(emis_cmp%name), factors, molec_wght )
-       emis_cmp%emis_factors = factors*1.e-3_r8 ! convert g/kg dry fuel to kg/kg
-       emis_cmp%molec_weight = molec_wght
-       emis_cmp => emis_cmp%next_emiscomp
-    enddo
+    if (.not. use_fates_bgc) then
+       if ( shr_fire_emis_factors_file == ' ') then
+          call endrun('ERROR:: fire_emis_factors_file must be set to use fire emissions with use_cn' )
+       endif
+       call fire_emis_factors_init( shr_fire_emis_factors_file )
+       emis_cmp => shr_fire_emis_linkedlist
+       do while(associated(emis_cmp))
+          allocate(emis_cmp%emis_factors(maxveg))
+          call fire_emis_factors_get( trim(emis_cmp%name), factors, molec_wght )
+          emis_cmp%emis_factors = factors*1.e-3_r8 ! convert g/kg dry fuel to kg/kg
+          emis_cmp%molec_weight = molec_wght
+          emis_cmp => emis_cmp%next_emiscomp
+       enddo
+    endif
 
     call this%InitAllocate(bounds)
-    call this%InitHistory(bounds)
-
+    ! FATES has it's own history!
+    if (.not. use_fates_bgc) then
+       call this%InitHistory(bounds)
+    endif
   end subroutine Init
 
   !-----------------------------------------------------------------------
@@ -314,6 +322,67 @@ contains
     end associate
 
   end subroutine CNFireEmisUpdate
+
+
+  subroutine FatesFireEmisUpdate(bounds, num_bgc_vegp, filter_bgc_vegp, clm_fates, fireemis_inst)
+
+    use CLMFatesInterfaceMod, only : hlm_fates_interface_type
+
+    !ARGUMENTS:
+    type(bounds_type),   intent(in)            :: bounds
+    integer,             intent(in)            :: num_bgc_vegp       ! number of bgc veg patches
+    integer,             intent(in)            :: filter_bgc_vegp(:) ! filter for bgc veg patches
+    type(hlm_fates_interface_type), intent(in) :: clm_fates
+    type(fireemis_type), intent(inout)         :: fireemis_inst
+
+    !LOCAL VARIABLES:
+    type(shr_fire_emis_comp_t), pointer :: emis_cmp
+    real(r8) :: emis_flux(shr_fire_emis_comps_n)
+    integer  :: fp,p,g,c                ! indices
+    integer  :: i, ii, icomp, imech, n_emis_comps, l, j
+
+    if ( shr_fire_emis_mechcomps_n < 1) return
+
+    associate( &
+         fire_emis => fireemis_inst%fireflx_patch, &
+         totfire   => fireemis_inst%totfire, &
+         mech      => fireemis_inst%mech, &
+         comp      => fireemis_inst%comp, &
+         ztop      => fireemis_inst%ztop_patch &
+         )
+
+      ! initialize to zero ...
+      fire_emis(bounds%begp:bounds%endp,:) = 0._r8
+      totfire%emis(bounds%begp:bounds%endp) =  0._r8
+      ztop(bounds%begp:bounds%endp) =  0._r8
+
+      do i = 1, shr_fire_emis_mechcomps_n
+         mech(i)%emis(bounds%begp:bounds%endp) =  0._r8
+      enddo
+      do i = 1, shr_fire_emis_comps_n
+         comp(i)%emis(bounds%begp:bounds%endp) =  0._r8
+      enddo
+
+      do fp = 1,num_bgc_vegp
+         p = filter_bgc_vegp(fp)
+
+         ! sum up the emissions compontent fluxes for the fluxes of chem mechanism compounds
+         do imech = 1,shr_fire_emis_mechcomps_n
+            n_emis_comps = shr_fire_emis_mechcomps(imech)%n_emis_comps
+            do icomp = 1,n_emis_comps ! loop over number of emission components that make up the nth mechanism compoud
+               ii = shr_fire_emis_mechcomps(imech)%emis_comps(icomp)%ptr%index
+               fire_emis(p,imech) = fire_emis(p,imech) + shr_fire_emis_mechcomps(imech)%coeffs(icomp) * fates_emis(p,ii)
+            enddo
+            mech(imech)%emis(p) = fire_emis(p,imech)
+         enddo
+
+         !ztop(p) = vert_dist_top( patch%itype(p) ) TODO: this needs to be rewritten
+      enddo ! fp
+
+    end associate
+
+ end subroutine FatesFireEmisUpdate
+
 
 ! Private methods
 !-----------------------------------------------------------------------

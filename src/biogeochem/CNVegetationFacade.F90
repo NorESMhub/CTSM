@@ -82,7 +82,7 @@ module CNVegetationFacade
   use SoilBiogeochemCarbonFluxType    , only : soilBiogeochem_carbonflux_type
   use SoilBiogeochemNitrogenStateType , only : soilbiogeochem_nitrogenstate_type
   use SoilBiogeochemNitrogenFluxType  , only : soilbiogeochem_nitrogenflux_type
-  use CNFireEmissionsMod              , only : fireemis_type, CNFireEmisUpdate
+  use CNFireEmissionsMod              , only : fireemis_type, CNFireEmisUpdate, FatesFireEmisUpdate
   use CNDriverMod                     , only : CNDriverInit
   use CNDriverMod                     , only : CNDriverSummarizeStates, CNDriverSummarizeFluxes
   use CNDriverMod                     , only : CNDriverNoLeaching, CNDriverLeaching
@@ -1033,8 +1033,13 @@ contains
          nutrient_competition_method, this%cnfire_method, this%dribble_crophrv_xsmrpool_2atm)
 
     ! fire carbon emissions 
-    call CNFireEmisUpdate(bounds, num_bgc_vegp, filter_bgc_vegp, &
-         this%cnveg_carbonflux_inst, this%cnveg_carbonstate_inst, fireemis_inst )
+    if (use_fates_bgc) then
+       call FatesFireEmisUpdate(bounds, num_bgc_vegp, filter_bgc_vegp, &
+          clm_fates, fireemis_inst)
+    else
+       call CNFireEmisUpdate(bounds, num_bgc_vegp, filter_bgc_vegp, &
+          this%cnveg_carbonflux_inst, this%cnveg_carbonstate_inst, fireemis_inst )
+    endif
 
     call CNAnnualUpdate(bounds,            &
          num_bgc_soilc, filter_bgc_soilc, &
