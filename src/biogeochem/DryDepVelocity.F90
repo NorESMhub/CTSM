@@ -208,6 +208,7 @@ CONTAINS
     use pftconMod      , only : nc3_nonarctic_grass, nc4_grass, nc3crop
     use pftconMod      , only : nc3irrig, npcropmin, npcropmax
     use clm_varcon     , only : spval
+    use clm_varctl     , only : use_fates
 
     !
     ! !ARGUMENTS:
@@ -358,7 +359,20 @@ CONTAINS
                     msg='ERROR: Not able to determine Wesley vegetation type'//&
                     errMsg(sourcefile, __LINE__))
             end if
+            
+             if(use_fates)then
+                if(patch%is_fates(pi))then
+                   wesveg = canopystate_inst%wesley_veg_index_patch(pi)
+                else
+                   wesveg = 8 !make bare ground for non-fates patches. Some of these are overwritten below.
+                endif
+             endif   
 
+             if(wesveg<0 .or. wesveg>1 )then
+                call endrun(subgrid_index=pi, subgrid_level=subgrid_level_patch, &
+                    msg='ERROR: No sensible Wesley vegetation type'//&
+                    errMsg(sourcefile, __LINE__))
+             endif
             ! create seasonality index used to index wesely data tables from LAI,  Bascially
             !if elai is between max lai from input data and half that max the index_season=1
 
@@ -376,12 +390,13 @@ CONTAINS
             ! 4 - Winter, snow on ground and subfreezing
             ! 5 - Transitional spring with partially green short annuals
 
-
-            !mlaidiff=jan-feb
-            minlai=minval(annlai(:,pi))
-            maxlai=maxval(annlai(:,pi))
-
-            index_season = -1
+            if(.not. use_fates)then !for non-FATES runs we use satellite phenology to choose the season for the ressistance parameters. 
+               !mlaidiff=jan-feb
+               minlai=minval(annlai(:,pi))
+               maxlai=maxval(annlai(:,pi))
+            endif
+            
+               index_season = -1
 
             if ( lun%itype(l) /= istsoil )then
                if ( lun%itype(l) == istice ) then
@@ -399,27 +414,38 @@ CONTAINS
                end if
             else if ( snow_depth(c) > 0 ) then
                index_season = 4
-            else if(elai(pi) > 0.5_r8*maxlai) then
+            else if(.not.use_fates .and. elai(pi) > 0.5_r8*maxlai) then
                index_season = 1
             endif
-
-            if (index_season<0) then
-               if (elai(pi) < (minlai+0.05_r8*(maxlai-minlai))) then
-                  index_season = 3
+            
+            if(use_fates.and.index_season<1)then 
+               if(patch%is_fates(pi))then
+                  index_season = canopystate_inst%wesley_season_index_patch(pi)
+               else
+                  index_season = 2 !set intermediate spring seson for bare ground. (as for urban)
                endif
-            endif
+               
+            else ! not fates
 
-            if (index_season<0) then
-               if (mlaidiff(pi) > 0.0_r8) then
-                  index_season = 2
-               elseif (mlaidiff(pi) < 0.0_r8) then
-                  index_season = 5
-               elseif (mlaidiff(pi).eq.0.0_r8) then
-                  index_season = 3
+               if (index_season<0) then
+                  if (elai(pi) < (minlai+0.05_r8*(maxlai-minlai))) then
+                     index_season = 3
+                  endif
                endif
-            endif
 
-            if (index_season<0) then
+               if (index_season<0) then
+                  if (mlaidiff(pi) > 0.0_r8) then
+                     index_season = 2
+                  elseif (mlaidiff(pi) < 0.0_r8) then
+                     index_season = 5
+                  elseif (mlaidiff(pi).eq.0.0_r8) then
+                     index_season = 3
+                  endif
+               endif
+               
+            endif ! use_fates
+            
+            if (index_season<0.or.index_season>5) then
                call endrun('ERROR: not able to determine season'//errmsg(sourcefile, __LINE__))
             endif
 
@@ -472,7 +498,6 @@ CONTAINS
 
                ! correction for frost
                cts = 1000._r8*exp( -tc - 4._r8 )
-
                !ground resistance
                rgsx(ispec) = 1._r8/((heff(ispec)/(1.e5_r8*(rgss(index_season,wesveg)+cts))) + &
                     (foxd(ispec)/(rgso(index_season,wesveg)+cts)))
@@ -480,6 +505,7 @@ CONTAINS
                !-------------------------------------------------------------------------------------
                ! special case for H2 and CO;; CH4 is set ot a fraction of dv(H2)
                !-------------------------------------------------------------------------------------
+
                if( ispec == index_h2 .or. ispec == index_co .or. ispec == index_ch4 ) then
 
                   if( ispec == index_co ) then
