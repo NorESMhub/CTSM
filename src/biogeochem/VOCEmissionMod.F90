@@ -416,6 +416,7 @@ contains
     !
     ! !USES:
     use subgridAveMod        , only : p2g
+    use clm_varctl           , only : use_fates
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds                  
@@ -451,6 +452,7 @@ contains
     real(r8) :: par240_sha              ! temporary
     
     integer                            :: class_num, n_meg_comps, imech, imeg, ii
+    integer                            :: patchpft ! to transfer FATES PFT space into CLM PFT space.
     character(len=16)                  :: mech_name
     type(shr_megan_megcomp_t), pointer :: meg_cmp
     real(r8)                           :: cp, alpha,  Eopt, topt  ! for history output
@@ -581,12 +583,18 @@ contains
 
              ! set emis factor
              ! if specified, set EF for isoprene with mapped values
-             if ( trim(meg_cmp%name) == 'isoprene' .and. shr_megan_mapped_emisfctrs) then
-                epsilon = get_map_EF(patch%itype(p),g, vocemis_inst)
+             if(use_fates)then
+                patchpft = canopystate_inst%voc_pftindex_patch(p)
              else
-                epsilon = meg_cmp%emis_factors(patch%itype(p))
+                patchpft = patch%itype(p)
+             endif 
+             if ( trim(meg_cmp%name) == 'isoprene' .and. shr_megan_mapped_emisfctrs) then
+                epsilon = get_map_EF(patchpft,g, vocemis_inst)
+             else
+                epsilon = meg_cmp%emis_factors(patchpft)
              end if
 
+             
              class_num = meg_cmp%class_number
 
              ! Activity factor for PPFD
@@ -692,7 +700,6 @@ contains
     ! vocemis_inst%efisop_patch ! Output: [real(r8) (:,:)]  emission factors for isoprene for each patch [ug m-2 h-1]
 
     get_map_EF = 0._r8
-    
     if (     ivt_in == ndllf_evr_tmp_tree  &
          .or.     ivt_in == ndllf_evr_brl_tree) then   !fineleaf evergreen
        get_map_EF = vocemis_inst%efisop_grc(2,g_in)
@@ -710,7 +717,7 @@ contains
     else if (ivt_in >= nc3crop) then                   !crops
        get_map_EF = vocemis_inst%efisop_grc(6,g_in)
     end if
-
+    
   end function get_map_EF
 
   !-----------------------------------------------------------------------

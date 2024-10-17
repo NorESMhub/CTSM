@@ -3257,6 +3257,7 @@ sub setup_logic_supplemental_nitrogen {
       add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl,
 		  'suplnitro', 'use_fates'=>$nl_flags->{'use_fates'});
   }
+
   #
   # Error checking for suplnitro
   #
@@ -4112,6 +4113,7 @@ sub setup_logic_dust_emis {
          }
       }
   # Otherwise make sure dust settings are NOT being set in CLM
+
   } else {
       my @vars = ( "dust_emis_method", "zender_soil_erod_source" );
       foreach my $option ( @vars ) {
