@@ -35,6 +35,9 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 <!-- Default Biogeochemistry mode -->
 <bgc_mode >sp</bgc_mode>
 
+<!-- Default ESM mode -->
+<esm >cesm</esm>
+
 <lnd_tuning_mode phys="clm4_5" >clm4_5_CRUv7</lnd_tuning_mode>
 <lnd_tuning_mode phys="clm5_0" >clm5_0_cam6.0</lnd_tuning_mode>
 <lnd_tuning_mode phys="clm6_0" >clm6_0_CRUJRA2024</lnd_tuning_mode>
@@ -602,8 +605,8 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
      for the CLM2 data in the CESM distribution -->
 <!-- Plant function types (relative to {csmdata}) -->
 <paramfile phys="clm6_0" >lnd/clm2/paramdata/ctsm60_params.c260303.nc</paramfile>
+<paramfile phys="clm6_0" use_fates=".true." esm="noresm">lnd/clm2/paramdata/ctsm60_params.noresm.c260406.nc</paramfile>
 <paramfile phys="clm6_0" lnd_tuning_mode="clm6_0_cam7.0">lnd/clm2/paramdata/ctsm60-cam70_params.c260305.nc</paramfile>
-<paramfile phys="clm6_0" use_fates=".true.">lnd/clm2/paramdata/ctsm60_params.noresm.c260406.nc</paramfile>
 <paramfile phys="clm5_0" >lnd/clm2/paramdata/clm50_params.c260305.nc</paramfile>
 <paramfile phys="clm4_5" >lnd/clm2/paramdata/clm45_params.c260305.nc</paramfile>
 
@@ -612,7 +615,8 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 <!-- path is relative to the land root (ie the path to CTSM)            -->
 <!-- ================================================================== -->
 
-<fates_paramfile>src/fates/parameter_files/fates_params_noresm.json</fates_paramfile>
+<fates_paramfile>src/fates/parameter_files/fates_params_default.json</fates_paramfile>
+<fates_paramfile esm="noresm">src/fates/parameter_files/fates_params_default.json</fates_paramfile>
 
 <!-- ================================================================== -->
 <!-- Default surface roughness parameterization                         -->
@@ -2699,14 +2703,19 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <fates_spitfire_mode            use_fates=".true.">4</fates_spitfire_mode>
 <fates_spitfire_mode            use_fates=".true." use_fates_sp=".true.">0</fates_spitfire_mode>
 <fates_harvest_mode             use_fates=".true.">no_harvest</fates_harvest_mode>
+<!-- NorESM suppored grids run always with luhdata-->
+<fates_harvest_mode  use_fates="true" esm="noresm">luhdata_area</fates_harvest_mode>
 <fates_lu_transition_logic      use_fates=".true.">4</fates_lu_transition_logic> <!--Default value of 4 means vegetation
  is not cleared during land use change transitions to rangeland, but is cleared in transitions to pasture and croplands -->
+<fates_lu_transition_logic      use_fates=".true." esm="noresm">1</fates_lu_transition_logic>
 <fates_stomatal_model           use_fates=".true.">ballberry1987</fates_stomatal_model>
+<fates_stomatal_model           use_fates=".true." esm="noresm">medlyn2011</fates_stomatal_model>
 <fates_stomatal_assimilation    use_fates=".true.">net</fates_stomatal_assimilation>
 <fates_leafresp_model           use_fates=".true.">ryan1991</fates_leafresp_model>
 <fates_cstarvation_model        use_fates=".true.">linear</fates_cstarvation_model>
 <fates_regeneration_model       use_fates=".true.">default</fates_regeneration_model>
-<fates_radiation_model          use_fates=".true.">twostream</fates_radiation_model>
+<fates_radiation_model          use_fates=".true.">norman</fates_radiation_model>
+<fates_radiation_model          use_fates=".true."  esm="noresm">twostream</fates_radiation_model>
 <fates_hydro_solver             use_fates=".true.">2D_Picard</fates_hydro_solver>
 <use_fates_managed_fire         use_fates=".true.">.false.</use_fates_managed_fire>
 <use_fates_planthydro           use_fates=".true.">.false.</use_fates_planthydro>
@@ -2717,7 +2726,7 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <use_fates_ed_prescribed_phys   use_fates=".true.">.false.</use_fates_ed_prescribed_phys>
 <use_fates_inventory_init       use_fates=".true.">.false.</use_fates_inventory_init>
 <use_fates_dbh_init             use_fates=".true.">.false.</use_fates_dbh_init>
-<use_fates_dbh_init             use_fates=".true." use_fates_nocomp=".true." >.true.</use_fates_dbh_init>
+<use_fates_dbh_init             use_fates=".true." use_fates_nocomp=".true." esm="noresm" >.true.</use_fates_dbh_init>
 <use_fates_sp                   use_fates=".true.">.false.</use_fates_sp>
 <use_fates_lupft                use_fates=".true.">.false.</use_fates_lupft>
 <use_fates_potentialveg         use_fates=".true.">.false.</use_fates_potentialveg>

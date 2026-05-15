@@ -78,7 +78,6 @@ def buildnml(case, caseroot, compname):
     glc_use_antarctica = case.get_value("GLC_USE_ANTARCTICA")
     mask = case.get_value("MASK_GRID")
     driver = case.get_value("COMP_INTERFACE").lower()
-    esm = case.get_value("CLM_ESM_DEFAULTS").lower()
 
     # Create init_generated_files directory if not there
     newdir = os.path.join(rundir, "init_generated_files")
@@ -413,7 +412,7 @@ def buildnml(case, caseroot, compname):
             '%s -cimeroot %s -landroot %s -infile %s -csmdata %s -inputdata %s %s -namelist "&clm_inparm  start_ymd=%s %s/ " '
             "%s %s -res %s %s -clm_start_type %s -envxml_dir %s "
             "-configuration %s -structure %s "
-            "%s -glc_nec %s %s -co2_ppmv %s -co2_type %s -config %s -driver %s -esm %s"
+            "%s -glc_nec %s %s -co2_ppmv %s -co2_type %s -config %s -driver %s "
             "%s %s %s %s"
             % (
                 cmd,
@@ -440,7 +439,6 @@ def buildnml(case, caseroot, compname):
                 clm_co2_type,
                 config_cache_file,
                 driver,
-                esm,
                 clm_bldnml_opts,
                 spinup,
                 tuning,

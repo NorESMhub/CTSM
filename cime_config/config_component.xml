@@ -276,8 +276,8 @@ Caveats:
       <value compset="DATM[^_]*_CLM[^_]*BGC"       >-bgc bgc</value>
       <value compset="DATM[^_]*_CLM[^_]*BGC-CROP"  >-bgc bgc -crop</value>
       <value compset="DATM[^_]*_CLM[^_]*FATES"     >--bgc fates --no-fire_emis --no-megan --no-drydep</value>
-      <value compset="DATM[^_]*_CLM[^_]*FATES-SP"  >--bgc fates --no-fire_emis</value>
-      <value compset="DATM[^_]*_CLM[^_]*FATES-NOCOMP" >--bgc fates --no-fire_emis</value>
+      <value compset="DATM[^_]*_CLM[^_]*FATES-SP"  >--bgc fates_sp --no-fire_emis</value>
+      <value compset="DATM[^_]*_CLM[^_]*FATES-NCFB" >--bgc fates_ncfb --no-fire_emis</value>
 
       <!-- ======================================= Coupled to CAM Options ======================================
         All versions with CAM - turn off sending test drv_flds_in namelists from CTSM

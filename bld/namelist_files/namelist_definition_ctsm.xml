@@ -2481,7 +2481,7 @@ NOTE: THIS CORRESPONDS DIRECTLY TO THE env_run.xml VARIABLE OF THE SAME NAME.
 </entry>
 
 <entry id="bgc_mode" type="char*5" category="default_settings"
-       group="default_settings" valid_values="sp,bgc,fates" >
+       group="default_settings" valid_values="sp,bgc,fates,fates_sp,fates_ncfb" >
 Command line arguement for biogeochemistry mode for CLM4.5
    sp  = Satellitte Phenology
    bgc = CLM4.5 BGC model with:
@@ -2490,6 +2490,8 @@ Command line arguement for biogeochemistry mode for CLM4.5
         Methane model
         Vertically resolved Carbon
    fates = FATES Functionally Assembled Terrestrial Ecosystem Simulator (ecosystem demography model with below ground BGC):
+   fates_sp = FATES in Satellite Phenology mode
+   fates_ncfb = FATES in no-competition mode and fixed biogeography (with below ground BGC)
 </entry>
 
 <entry id="esm" type="char*8"  category="default_settings"
