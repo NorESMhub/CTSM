@@ -4974,7 +4974,7 @@ sub setup_logic_fates {
 
         foreach my $var ( @list ) {
            add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, $var, 'use_fates'=>$nl_flags->{'use_fates'},
-                       'use_fates_sp'=>$nl_flags->{'use_fates_sp'}, 'esm'=>$nl_flags->{'esm'};
+                       'use_fates_sp'=>$nl_flags->{'use_fates_sp'}, 'esm'=>$nl_flags->{'esm'});
         }
         add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl,"fates_harvest_mode", 'use_fates'=>$nl_flags->{'use_fates'},
                     'use_fates_sp'=>$nl_flags->{'use_fates_sp'}, 'esm'=>$nl_flags->{'esm'},
