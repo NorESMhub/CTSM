@@ -351,6 +351,56 @@
     <lname>1850_DATM%GSWP3v1_CLM60%FATES-SP_SICE_SOCN_MOSART_SGLC_SWAV</lname>
   </compset>
 
+  <!-- NorESM Compsets-->
+  <compset>
+    <alias>NI1850Clm60FatesCru</alias>
+    <lname>1850_DATM%CRUJRA2024b_CLM60%FATES%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>NI1850Clm60NorCru</alias>
+    <lname>1850_DATM%CRUJRA2024b_CLM60%FATES-NCFB%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>NI1850Clm60NorSpinup</alias>
+    <lname>1850_DATM%CPLHIST_CLM60%FATES-NCFB%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>NI1850Clm60FatesSpCru</alias>
+    <lname>1850_DATM%CRUJRA2024b_CLM60%FATES-SP%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>NHISTClm60FatesCru</alias>
+    <lname>HIST_DATM%CRUJRA2024b_CLM60%FATES%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>NIHISTClm60NorCru</alias>
+    <lname>HIST_DATM%CRUJRA2024b_CLM60%FATES-NCFB%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>NIHISTClm60NorCplHist</alias>
+    <lname>HIST_DATM%CPLHIST_CLM60%FATES-NCFB%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>NIHISTClm60FatesSp</alias>
+    <lname>HIST_DATM%CRUJRA2024b_CLM60%FATES-SP%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>NI2000Clm60Fates</alias>
+    <lname>2000_DATM%CRUJRA2024b_CLM60%FATES%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>NI2000Clm60NorCru</alias>
+    <lname>2000_DATM%CRUJRA2024b_CLM60%FATES-NCFB%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>NI2000Clm60FatesSp</alias>
+    <lname>2000_DATM%CRUJRA2024b_CLM60%FATES-SP%NORESM_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
 
   <compset>
      <alias>I1850Clm50Bgc</alias>
