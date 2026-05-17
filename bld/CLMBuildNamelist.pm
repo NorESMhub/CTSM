@@ -1058,12 +1058,13 @@ sub setup_cmdl_esm {
 
   my ($opts, $nl_flags, $definition, $defaults, $envxml_ref) = @_;
 
-  my $var = 'esm'
+  my $var = "esm";
   $nl_flags->{$var} = $envxml_ref->{'CLM_ESM_DEFAULTS'};
   
-  $val = $nl_flags->{$var};
-  $group = $definition->get_group_name($var);
-  if ( ! $definition->is_valid_value( $var, $val ) ) {
+  my $val = $nl_flags->{$var};
+  #$log->warning("$var is $val");
+  my $group = $definition->get_group_name($var);
+  if ( ! $definition->is_valid_value( $var, $val , 'noquotes'=>1  ) ) {
      my @valid_values   = $definition->get_valid_values( $var );
      $log->fatal_error("$var namelist flag has a value ($val) that is NOT valid. Valid values are: @valid_values");
   }
@@ -2329,7 +2330,7 @@ sub setup_logic_params_file {
   add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'paramfile',
               'phys'=>$nl_flags->{'phys'},
               'lnd_tuning_mode'=>$nl_flags->{'lnd_tuning_mode'},
-              'use_flexibleCN'=>$nl_flags->{'use_flexibleCN'}, 'use_fates'=>$nl_flags->{'use_fates'} 'esm', $nl_flags->{'esm'});
+              'use_flexibleCN'=>$nl_flags->{'use_flexibleCN'}, 'use_fates'=>$nl_flags->{'use_fates'}, $nl_flags->{'esm'});
 }
 
 #-------------------------------------------------------------------------------

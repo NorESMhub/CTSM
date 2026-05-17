@@ -616,7 +616,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 <!-- ================================================================== -->
 
 <fates_paramfile>src/fates/parameter_files/fates_params_default.json</fates_paramfile>
-<fates_paramfile esm="noresm">src/fates/parameter_files/fates_params_default.json</fates_paramfile>
+<fates_paramfile esm="noresm">src/fates/parameter_files/fates_params_noresm.json</fates_paramfile>
 
 <!-- ================================================================== -->
 <!-- Default surface roughness parameterization                         -->

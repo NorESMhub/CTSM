@@ -91,7 +91,7 @@ def buildnml(case, caseroot, compname):
     # check compset validity:
     match = re.search(r'(?<=_CLM).*', compset)
     if match:
-        comp_conf = match.group(1)
+        comp_conf = match.group(0)
         comp_conf = comp_conf.split("_")
         comp_conf = comp_conf[0]
     else:

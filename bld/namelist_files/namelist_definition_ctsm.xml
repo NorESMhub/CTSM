@@ -2495,7 +2495,7 @@ Command line arguement for biogeochemistry mode for CLM4.5
 </entry>
 
 <entry id="esm" type="char*8"  category="default_settings"
-       group="default_settings" valid_values="default,cesm,noresm" >
+       group="default_settings" valid_values="cesm,noresm" >
 Command line argument for picking up correct defaults depending on
    which ESM's compset has been set. 
 </entry>
