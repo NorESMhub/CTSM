@@ -23,7 +23,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
       'NOA','O3','O3S','ONITR','PAN','POOH','ROOH','SO2','SOAG','XOOH'
 </drydep_list>
 
-<drydep_list use_fates = ".true.">'O3','NO2','HNO3','NO','HO2NO2',
+<drydep_list use_fates = ".true." esm="noresm">'O3','NO2','HNO3','NO','HO2NO2',
              'CH3OOH','CH2O','CO','H2O2','CH3COOOH',
              'PAN','MPAN','C2H5OOH','ONIT','POOH',
              'C3H7OOH','ROOH','CH3COCHO','CH3COCH3',
@@ -34,7 +34,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 </drydep_list>
 <!-- effective Henry's coef data for wet and dry deposition -->
 <dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
-<dep_data_file use_fates=".true.">atm/cam/chem/trop_mozart/dvel/dep_data_c201019.nc</dep_data_file>
+<dep_data_file use_fates=".true." esm="noresm">atm/cam/chem/trop_mozart/dvel/dep_data_c201019.nc</dep_data_file>
 <!-- 
      Defaults for megan_emis_nl namelists to test standalone CTSM with 
      This is from the CAM FHISTC_MTt4s compset namelist from 04/25/2025 EBK
@@ -70,7 +70,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
         ' nerolidol_c + nerolidol_t)'
 </megan_specifier>
 
-<megan_specifier use_fates=".true.">'ISOP = isoprene',
+<megan_specifier use_fates=".true." esm="noresm">'ISOP = isoprene',
                  'C10H16 = pinene_a + carene_3 + thujene_a',
                  'CH3OH = methanol',
                  'C2H5OH = ethanol',
@@ -79,7 +79,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
                  'CH3COOH = acetic_acid', 'CH3COCH3 = acetone'
 </megan_specifier>
 
-<megan_factors_file phys="clm6_0" use_fates=".true." >atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
+<megan_factors_file phys="clm6_0" use_fates=".true." esm="noresm">atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
 <megan_factors_file phys="clm6_0" >atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
 <megan_factors_file phys="clm5_0" >atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
 <megan_factors_file phys="clm4_5" >atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>

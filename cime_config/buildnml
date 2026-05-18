@@ -106,6 +106,15 @@ def buildnml(case, caseroot, compname):
         logger.error(f"ERROR: FATES can not be specified when %SP or %BGC are also specified in {compset}")
     if ("NWP" in comp_conf) and ("FATES" in comp_conf):
         logger.error(f"ERROR: FATES can not be specified together with NWP in {compset}")
+    if "%NORESM" in comp_conf:
+        if "%FATES" not in comp_conf:
+            #instead of prohibiting running with %NORESM, just default the flag to 
+            logger.warning(f"WARNING: %NORESM is specified in a compset but NorESM-specific defaults are not specified for {compset} " +
+                            "that does not include FATES. This case will pick up defaults for CESM.")
+        if "%NOANTHRO" in comp_conf:
+            logger.error(f"ERROR: %NORESM currently does not work with %NOANTHRO")
+        if re.search(r'^SSP.*',compset):
+            logger.error(f"ERROR: SSPs are currently not available for %NORESM ")
 
 
 

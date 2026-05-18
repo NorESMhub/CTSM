@@ -2733,7 +2733,7 @@ sub setup_logic_initial_conditions {
     }
     foreach my $item ( "mask", "maxpft", "irrigate", "glc_nec", "use_crop", "use_cn", "use_cndv",
                        "use_fates", "use_excess_ice",
-                       "lnd_tuning_mode", 'esm'
+                       "lnd_tuning_mode", 'esm', 'bgc_mode'
                      ) {
        $settings{$item}    = $nl_flags->{$item};
     }
@@ -4265,8 +4265,10 @@ sub setup_logic_dry_deposition {
 
   my @list = ( "drydep_list", "dep_data_file");
   if ($opts->{'drydep'} ) {
-    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'drydep_list', "use_fates"=>$nl_flags->{'use_fates'});
-    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'dep_data_file', "use_fates"=>$nl_flags->{'use_fates'});
+    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'drydep_list', "use_fates"=>$nl_flags->{'use_fates'}, 
+                "esm"=>$nl_flags('esm'));
+    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'dep_data_file', "use_fates"=>$nl_flags->{'use_fates'},
+                "esm"=>$nl_flags('esm'));
     &remove_newlines( $nl, $definition, "drydep_list" );
   }
   # fates-sp will set use_fates_nocomp in the setup logic for fates earlier
@@ -4405,8 +4407,10 @@ sub setup_logic_megan {
         $log->fatal_error("Running MEGAN in fates bgc mode without use_fates_nocomp=.true. or use_fates_sp=.true. is not allowed");
   }
 
-    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'megan_specifier',"use_fates"=>$nl_flags->{'use_fates'});
-    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'megan_factors_file',"use_fates"=>$nl_flags->{'use_fates'});
+    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'megan_specifier',"use_fates"=>$nl_flags->{'use_fates'},
+                "esm"=>$nl_flags->{'esm'});
+    add_default($opts,  $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'megan_factors_file',"use_fates"=>$nl_flags->{'use_fates'},
+                "esm"=>$nl_flags->{'esm'});
   }
   if ( defined($nl->get_value('megan_specifier')) ||
        defined($nl->get_value('megan_factors_file')) ) {
