@@ -242,9 +242,11 @@ Caveats:
       <value compset="^2010[CE]?_" >2010_control</value>
       <value compset="^2000[CE]?_" >2000_control</value>
       <value compset="^1850[CE]?_" >1850_control</value>
+      <value compset="^1850[CE]?_.*_CLM60[^_]*NORESM" >1850_control_noresm</value>
       <value compset="^1850_.*_CLM60%[^_]*NOANTHRO" >1850_noanthro_control</value>
       <value compset="^1850_.*_CLM50%[^_]*NOANTHRO" >1850_noanthro_control</value>
       <value compset="^HIST[CE]?_" >20thC_transient</value>
+      <value compset="^1850[CE]?_.*_CLM60[^_]*NORESM" >20thC_transient_noresm</value>
       <value compset="^SSP585[CE]?_" >1850-2100_SSP5-8.5_transient</value>
       <value compset="^SSP126[CE]?_" >1850-2100_SSP1-2.6_transient</value>
       <value compset="^SSP370[CE]?_" >1850-2100_SSP3-7.0_transient</value>
@@ -255,6 +257,7 @@ Caveats:
       <value compset="^SSP460[CE]?_" >1850-2100_SSP4-6.0_transient</value>
       <value compset="^SSP585[CE]?_" >1850-2100_SSP5-8.5_transient</value>
       <value compset="^AMIP_" >20thC_transient</value>
+      <value compset="^AMIP_.*_CLM60[^_]*NORESM" >20thC_transient_noresm</value>
       <value compset="^PIPD_" >1850-2100_SSP5-8.5_transient</value>
     </values>
     <group>run_component_ctsm</group>
