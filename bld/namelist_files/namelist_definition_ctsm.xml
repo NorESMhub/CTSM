@@ -2480,7 +2480,7 @@ NOTE: THIS CORRESPONDS DIRECTLY TO THE env_run.xml VARIABLE OF THE SAME NAME.
       Set the env_run variable, rather than setting this directly.
 </entry>
 
-<entry id="bgc_mode" type="char*5" category="default_settings"
+<entry id="bgc_mode" type="char*10" category="default_settings"
        group="default_settings" valid_values="sp,bgc,fates,fates_sp,fates_ncfb" >
 Command line arguement for biogeochemistry mode for CLM4.5
    sp  = Satellitte Phenology

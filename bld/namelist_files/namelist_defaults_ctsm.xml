@@ -904,6 +904,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 <use_init_interp use_cndv=".false." use_fates=".false." phys="clm6_0" lnd_tuning_mode="clm6_0_cam5.0" >.false.</use_init_interp>
 <use_init_interp use_cndv=".false." use_fates=".false." phys="clm6_0" lnd_tuning_mode="clm6_0_cam4.0" >.false.</use_init_interp>
 <!-- Default to FALSE if couldn't find a match -->
+<use_init_interp use_fates=".true.">.false.</use_init_interp>
 <use_init_interp                                                                                      >.false.</use_init_interp>
 <!-- NOTE: if use_init_interp is FALSE that indicates that you can't interpolate from an initial conditions file that's similar
            Either an existing file is too different, too different in the year, or a configuration that can't interpolate
@@ -2700,11 +2701,10 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <!-- ===== FATES DEFAULTS =========== -->
 <fates_electron_transport_model use_fates=".true.">FvCB1980</fates_electron_transport_model>
 <fates_photosynth_acclimation   use_fates=".true.">nonacclimating</fates_photosynth_acclimation>
-<fates_spitfire_mode            use_fates=".true.">4</fates_spitfire_mode>
+<fates_spitfire_mode            use_fates=".true.">1</fates_spitfire_mode>
 <fates_spitfire_mode            use_fates=".true." use_fates_sp=".true.">0</fates_spitfire_mode>
+<fates_spitfire_mode            use_fates=".true." use_fates_sp=".false." ems="noresm">4</fates_spitfire_mode>
 <fates_harvest_mode             use_fates=".true.">no_harvest</fates_harvest_mode>
-<!-- NorESM suppored grids run always with luhdata-->
-<fates_harvest_mode  use_fates="true" esm="noresm">luhdata_area</fates_harvest_mode>
 <fates_lu_transition_logic      use_fates=".true.">4</fates_lu_transition_logic> <!--Default value of 4 means vegetation
  is not cleared during land use change transitions to rangeland, but is cleared in transitions to pasture and croplands -->
 <fates_lu_transition_logic      use_fates=".true." esm="noresm">1</fates_lu_transition_logic>
@@ -2715,7 +2715,7 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <fates_cstarvation_model        use_fates=".true.">linear</fates_cstarvation_model>
 <fates_regeneration_model       use_fates=".true.">default</fates_regeneration_model>
 <fates_radiation_model          use_fates=".true.">norman</fates_radiation_model>
-<fates_radiation_model          use_fates=".true."  esm="noresm">twostream</fates_radiation_model>
+<fates_radiation_model          use_fates=".true." esm="noresm">twostream</fates_radiation_model>
 <fates_hydro_solver             use_fates=".true.">2D_Picard</fates_hydro_solver>
 <use_fates_managed_fire         use_fates=".true.">.false.</use_fates_managed_fire>
 <use_fates_planthydro           use_fates=".true.">.false.</use_fates_planthydro>
@@ -2734,8 +2734,8 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <use_fates_luh                  use_fates=".true." fates_harvest_mode="luhdata_mass"  >.true.</use_fates_luh>
 <use_fates_luh                  use_fates=".true." use_fates_lupft=".true.">.true.</use_fates_luh>
 <use_fates_luh                  use_fates=".true." use_fates_potentialveg=".true.">.true.</use_fates_luh>
+<use_fates_luh                  use_fates=".true." use_fates_sp=".true."          >.false.</use_fates_luh>
 <use_fates_luh                  use_fates=".true."                                >.false.</use_fates_luh>
-<fates_lu_transition_logic      use_fates=".true." use_fates_luh=".true." >1</fates_lu_transition_logic>
 <fates_parteh_mode              use_fates=".true.">carbon_only</fates_parteh_mode>
 <fates_seeddisp_cadence         use_fates=".true.">0</fates_seeddisp_cadence>
 <use_fates_nocomp               use_fates=".true." use_fates_sp=".true."   >.true.</use_fates_nocomp>
