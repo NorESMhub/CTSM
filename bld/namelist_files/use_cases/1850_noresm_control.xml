@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<use_case_desc>Conditions to simulate 1850 land-use</use_case_desc>
+
+<sim_year>1850</sim_year>
+
+<sim_year_range>constant</sim_year_range>
+
+<irrigate use_crop=".true." >.false.</irrigate>
+<irrigate use_fates=".true">.false.</irrigate>
+
+<stream_year_first_popdens cnfireson=".true." >1850</stream_year_first_popdens>
+<stream_year_last_popdens  cnfireson=".true." >1850</stream_year_last_popdens>
+
+
+
+<do_transient_urban>.false.</do_transient_urban>
+<do_transient_lakes>.false.</do_transient_lakes>
+
+
+<stream_year_first_urbantv >1850</stream_year_first_urbantv>
+<stream_year_last_urbantv  >1850</stream_year_last_urbantv>
+
+<!-- NorESM suppored grids run always with luhdata-->
+<fates_harvest_mode  use_fates=".true." use_fates_sp=".true." esm="noresm">no_harvest</fates_harvest_mode>
+<fates_harvest_mode  use_fates=".true." use_fates_sp=".false." esm="noresm">luhdata_area</fates_harvest_mode>
+
+
+<flandusepftdat hgrid="ne16np4.pg3" use_fates="true">LU_data_CMIP7/fates_landuse_pft_surfdata_ne16np4_c260508.nc'</flandusepftdat>
+<flandusepftdat hgrid="ne30np4.pg3" use_fates="true">LU_data_CMIP7/fates_landuse_pft_surfdata_ne16np4_c260508.nc'</flandusepftdat>
+
+<fluh_timeseries hgrid="ne16np4.pg3" esm="noresm">LU_data_CMIP7/LUH3_1850_steadystate_ne16np4_c260508.nc</fluh_timeseries>
+<fluh_timeseries hgrid="ne30np4.pg3" esm="noresm">LU_data_CMIP7/LUH3_1850_steadystate_ne30np4_c260515.nc</fluh_timeseries>
+
+<!--initial conditions 1850-->
+<finidat hgrid="ne30np4.pg3" use_fates=".true." bgc_mode="fates_ncfb" glc_nec="10" esm="noresm" lnd_tuning_mode="clm6_0_cam7.0"
+         use_init_interp=".false."
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/ctsm5.4.CMIP7_ciso_ctsm5.3.075_ne30_123_HIST_popDens.clm2.r.2000-01-01-00000.nc</finidat>
+<finidat hgrid="ne16np4.pg3" use_fates=".true." bgc_mode="fates_ncfb" 
+         sim_year="1850" glc_nec="10" esm="noresm" lnd_tuning_mode="clm6_0_cam7.0"
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/n1850.ne16pg3_tn14.beta16.Run13.clm2.r.1331-01-01-00000.nc</finidat>
+
+<finidat hgrid="ne30np4.pg3" bgc_mode="fates_ncfb" esm="noresm" lnd_tuning_mode="clm6_0_CRUJRA2024" sim_year="1850"
+         use_excess_ice=".true." use_cndv=".false." use_crop=".false." use_fates=".true."  use_init_interp=".false."
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/ctsm5.4.CMIP7_ciso_ctsm5.3.075_ne30_123_HIST_popDens.clm2.r.2000-01-01-00000.nc</finidat>
+<finidat hgrid="ne16np4.pg3" bgc_mode="fates_ncfb" esm="noresm" lnd_tuning_mode="clm6_0_CRUJRA2024" sim_year="1850"
+         use_excess_ice=".true." use_cndv=".false." use_crop=".false." use_fates=".true." use_init_interp=".false."
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/n1850.ne16pg3_tn14.beta16.Run13.clm2.r.1331-01-01-00000.nc</finidat>
+
+
+
+
+
+</namelist_defaults>

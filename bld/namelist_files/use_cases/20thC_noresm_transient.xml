@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<use_case_desc            >Simulate transient land-use, and aerosol deposition changes from 1850 to 2015</use_case_desc>
+<use_case_desc bgc="cn"   >Simulate transient land-use, aerosol deposition, and Nitrogen deposition changes from 1850 to 2015</use_case_desc>
+<use_case_desc use_cn=".true." >Simulate transient land-use, aerosol deposition, and Nitrogen deposition changes from 1850 to 2015</use_case_desc>
+
+<sim_year>1850</sim_year>
+
+<sim_year_range>1850-2000</sim_year_range>
+
+<clm_start_type>arb_ic</clm_start_type>
+
+<!-- For now use cycle for transient cases until CDEPS issue 201 is resolved
+<ndep_taxmode use_cn=".true." >limit</ndep_taxmode>
+-->
+
+<clm_demand >flanduse_timeseries</clm_demand>
+
+<irrigate use_crop=".true."               use_cndv=".false.">.true.</irrigate>
+<irrigate use_crop=".true."               use_cndv=".true." >.false.</irrigate>
+<irrigate use_crop=".true." phys="clm4_5" use_cndv=".false.">.false.</irrigate>
+
+<stream_year_first_popdens cnfireson=".true."   >1850</stream_year_first_popdens>
+<stream_year_last_popdens  cnfireson=".true."   >2016</stream_year_last_popdens>
+<model_year_align_popdens  cnfireson=".true."   >1850</model_year_align_popdens>
+
+<stream_year_first_urbantv >1850</stream_year_first_urbantv>
+<stream_year_last_urbantv  >2106</stream_year_last_urbantv>
+<model_year_align_urbantv  >1850</model_year_align_urbantv>
+<fates_harvest_mode  use_fates=".true." use_fates_sp=".false." esm="noresm">luhdata_area</fates_harvest_mode>
+
+<flandusepftdat hgrid="ne16np4.pg3" use_fates="true">LU_data_CMIP7/fates_landuse_pft_surfdata_ne16np4_c260508.nc'</flandusepftdat>
+<flandusepftdat hgrid="ne16np4.pg3" use_fates="true">LU_data_CMIP7/fates_landuse_pft_surfdata_ne30np4_c260513.nc'</flandusepftdat>
+<!--initial conditions 1850 this is the same as in 1850_control NorESM because we use use_case to have priority over namelist_defaults-->
+<finidat hgrid="ne30np4.pg3" use_fates=".true." bgc_mode="fates_ncfb"
+         ic_ymd="18500101" sim_year="1850" use_excess_ice=".true."
+         ic_tod="0" glc_nec="10" use_crop=".false." esm="noresm" lnd_tuning_mode="clm6_0_cam7.0"
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/ctsm5.4.CMIP7_ciso_ctsm5.3.075_ne30_123_HIST_popDens.clm2.r.2000-01-01-00000.nc</finidat>
+<finidat hgrid="ne30np4.pg3" use_fates=".true."
+         ic_ymd="18500101" sim_year="1850" use_excess_ice=".true."
+         ic_tod="0" glc_nec="10" use_crop=".false." esm="noresm" lnd_tuning_mode="clm6_0_CRUJRA2024"
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/ctsm5.4.CMIP7_ciso_ctsm5.3.075_ne30_123_HIST_popDens.clm2.r.2000-01-01-00000.nc</finidat>
+<finidat hgrid="ne16np4.pg3" use_fates=".true." bgc_mode="fates_ncfb"
+         ic_ymd="18500101" sim_year="1850" use_excess_ice=".true."
+         ic_tod="0" glc_nec="10" use_crop=".false." esm="noresm" lnd_tuning_mode="clm6_0_cam7.0"
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/n1850.ne16pg3_tn14.beta16.Run13.clm2.r.1331-01-01-00000.nc</finidat>
+<finidat hgrid="ne16np4.pg3" use_fates=".true." bgc_mode="fates_ncfb"
+         ic_ymd="18500101" sim_year="1850" use_excess_ice=".true."
+         ic_tod="0" glc_nec="10" use_crop=".false." esm="noresm" lnd_tuning_mode="clm6_0_CRUJRA2024"
+         phys="clm6_0">lnd/clm2/initdata_esmf/ctsm5.4/n1850.ne16pg3_tn14.beta16.Run13.clm2.r.1331-01-01-00000.nc</finidat>
+
+
+</namelist_defaults>
