@@ -194,8 +194,8 @@ contains
     integer            :: mon             ! current month (1 -> 12)
     integer            :: day             ! current day (1 -> 31)
     integer            :: ncsec           ! current time of day [seconds]
-    character(len=256) :: fnamer          ! name of netcdf restart file
-    character(len=256) :: pnamer          ! full pathname of netcdf restart file
+    character(len=512) :: fnamer          ! name of netcdf restart file
+    character(len=512) :: pnamer          ! full pathname of netcdf restart file
     character(len=256) :: locfn           ! local file name
     type(file_desc_t)  :: ncid            ! netcdf id
     real(r8)           :: dtime           ! time step increment (sec)
