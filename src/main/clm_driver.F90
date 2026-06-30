@@ -1549,10 +1549,15 @@ contains
        if (rstwr) then
           call t_startf('clm_drv_io_wrest')
           filer = restFile_filename(rdate=rdate)
-
-          call restFile_write( bounds_proc, filer, &
+          if (use_fates) then
+             call restFile_write( bounds_proc, filer, &
+               writing_finidat_interp_dest_file=.false., rdate=rdate, &
+               nfates_flags=clm_fates%nfates_restart_flags,fates_flags=clm_fates%fates_restart_flags, &
+               fates_flags_names=clm_fates%fates_restart_flagnames)
+          else
+             call restFile_write( bounds_proc, filer, &
                writing_finidat_interp_dest_file=.false., rdate=rdate )
-
+          end if
           call t_stopf('clm_drv_io_wrest')
        end if
        call t_stopf('clm_drv_io')
