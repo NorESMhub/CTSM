@@ -49,7 +49,10 @@ module restFileMod
   private :: restFile_dimset
   private :: restFile_write_issues_fixed ! Write metadata for issues fixed
   private :: restFile_read_issues_fixed ! Read and process metadata for issues fixed
+  private :: restFile_write_fates_metadata  ! Write metadata for fates restarts
+  private :: restFile_read_fates_metadata   ! Read metadata from fates restarts
   private :: restFile_add_flag_metadata ! Add global metadata for some logical flag
+  private :: restFile_get_flag_metadata ! Get global metadata for some logical flag
   private :: restFile_add_ilun_metadata ! Add global metadata defining landunit types
   private :: restFile_add_icol_metadata ! Add global metadata defining column types
   private :: restFile_add_ipft_metadata ! Add global metadata defining patch types
@@ -71,7 +74,7 @@ module restFileMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine restFile_write( bounds, file, writing_finidat_interp_dest_file, rdate, noptr)
+  subroutine restFile_write( bounds, file, writing_finidat_interp_dest_file, rdate, noptr, nfates_flags, fates_flags, fates_flags_names)
     !
     ! !DESCRIPTION:
     ! Define/write CLM restart file.
@@ -82,6 +85,9 @@ contains
     logical           , intent(in)           :: writing_finidat_interp_dest_file ! true if we are writing a finidat_interp_dest file
     character(len=*)  , intent(in), optional :: rdate ! restart file time stamp for name
     logical           , intent(in), optional :: noptr ! if should NOT write to the restart pointer file
+    integer           , intent(inout), optional :: nfates_flags ! if should NOT write to the restart pointer file
+    logical           , intent(inout), optional :: fates_flags(:)  ! if should NOT write to the restart pointer file
+    character(len=*)  , intent(inout), optional :: fates_flags_names(:) ! if should NOT write to the restart pointer file
     !
     ! !LOCAL VARIABLES:
     type(file_desc_t) :: ncid ! netcdf id
@@ -118,7 +124,9 @@ contains
 
     call restFile_write_issues_fixed(ncid, &
          writing_finidat_interp_dest_file = writing_finidat_interp_dest_file)
-
+    if (use_fates .and. present(nfates_flags)) then
+       call restFile_write_fates_metadata(ncid,nfates_flags,fates_flags_names,fates_flags)
+    endif 
     call restFile_enddef( ncid )
 
     ! Write variables
@@ -153,7 +161,7 @@ contains
   end subroutine restFile_write
 
   !-----------------------------------------------------------------------
-  subroutine restFile_read( bounds_proc, file, glc_behavior, reset_dynbal_baselines_lake_columns )
+  subroutine restFile_read( bounds_proc, file, glc_behavior, reset_dynbal_baselines_lake_columns, nfates_flags, fates_flags, fates_flags_names)
     !
     ! !DESCRIPTION:
     ! Read a CLM restart file.
@@ -162,6 +170,9 @@ contains
     type(bounds_type) , intent(in) :: bounds_proc      ! processor-level bounds
     character(len=*)  , intent(in) :: file             ! output netcdf restart file
     type(glc_behavior_type), intent(in) :: glc_behavior
+    integer           , intent(inout), optional :: nfates_flags ! number of fates metadataflags
+    logical           , intent(inout), optional :: fates_flags(:)  ! fates metadata flags values
+    character(len=*)  , intent(inout), optional :: fates_flags_names(:) ! fates metadata flags names
 
     ! BACKWARDS_COMPATIBILITY(wjs, 2020-09-02) This is needed when reading old initial
     ! conditions files created before https://github.com/ESCOMP/CTSM/issues/1140 was
@@ -212,6 +223,10 @@ contains
 
     call accumulRest( ncid, flag='read' )
 
+    if (use_fates .and. present(nfates_flags)) then
+       call restFile_read_fates_metadata(ncid,nfates_flags,fates_flags_names,fates_flags)
+    endif 
+
     call clm_instRest( bounds_proc, ncid, flag='read', &
          writing_finidat_interp_dest_file=.false.)
 
@@ -221,7 +236,6 @@ contains
 
     call restFile_read_issues_fixed(ncid, &
          reset_dynbal_baselines_lake_columns = reset_dynbal_baselines_lake_columns)
-
     ! Do error checking on file
     
     call restFile_check_consistency(bounds_proc, ncid)
@@ -671,6 +685,45 @@ contains
 
   end subroutine restFile_read_issues_fixed
 
+  subroutine restFile_write_fates_metadata(ncid,num_attrs,attrs,attr_vals)
+    !
+    ! !DESCRIPTION:
+    ! Write fates flags as global attributes so fates knows how to deal with inconsistencies.
+    !
+    ! !ARGUMENTS:
+    type(file_desc_t), intent(inout) :: ncid ! local file id
+    integer,           intent(in)    :: num_attrs
+    character(len=*),  intent(in)    :: attrs(:)
+    logical,           intent(in)    :: attr_vals(:)
+
+    ! LOCAL VARIABLES:
+    integer :: att
+    character(len=*), parameter :: subname = 'restFile_write_fates_metadata'
+    do att=1,num_attrs
+       call restFile_add_flag_metadata(ncid, attr_vals(att), trim(attrs(att)))
+    end do
+  end subroutine restFile_write_fates_metadata
+
+  subroutine restFile_read_fates_metadata(ncid,num_attrs,attrs,attr_vals)
+    !
+    ! !DESCRIPTION:
+    ! Find anrd ead fates flags as global attributes.
+    !
+    ! !ARGUMENTS:
+    type(file_desc_t), intent(inout) :: ncid ! local file id
+    integer,           intent(in)    :: num_attrs
+    character(len=*),  intent(in)    :: attrs(:)
+    logical,           intent(inout)    :: attr_vals(:)
+    character(len=*), parameter :: subname = 'restFile_read_fates_metadata'
+    
+    !LOCAL VARIABLES
+    integer :: att
+
+    do att=1,num_attrs
+      call restFile_get_flag_metadata(ncid, attr_vals(att), trim(attrs(att)))
+    end do
+  end subroutine restFile_read_fates_metadata
+
 
   !-----------------------------------------------------------------------
   subroutine restFile_add_flag_metadata(ncid, flag, flag_name)
@@ -698,7 +751,39 @@ contains
 
   end subroutine restFile_add_flag_metadata
 
-
+  !-----------------------------------------------------------------------
+  subroutine restFile_get_flag_metadata(ncid, flag, flag_name)
+    !
+    ! !DESCRIPTION:
+    ! Add global metadata for some logical flag
+    !
+    ! !USES:
+    !
+    ! !ARGUMENTS:
+    type(file_desc_t), intent(inout) :: ncid ! local file id
+    logical          , intent(out)   :: flag ! logical flag
+    character(len=*) , intent(in)    :: flag_name ! name of netcdf attribute
+    !
+    ! !LOCAL VARIABLES:
+    logical           :: attfound
+    character(len=64) :: att_val
+    character(len=*), parameter :: subname = 'restFile_get_flag_metadata'
+    !-----------------------------------------------------------------------
+    flag=.false.
+    call check_att(ncid, NCD_GLOBAL, trim(flag_name), attfound)
+    if (attfound) then
+      call ncd_getatt(ncid, NCD_GLOBAL, trim(flag_name), att_val)
+    else
+      att_val = 'false'
+    endif
+    if (trim(att_val) == 'false') then
+       flag=.false.
+    elseif (trim(att_val) == 'true') then
+       flag=.true.
+    else
+       call endrun(msg='ERROR reading global logical flag '//trim(flag_name)//' with value '//trim(att_val)//' '//errMsg(sourcefile, __LINE__))
+    endif
+  end subroutine restFile_get_flag_metadata
   !-----------------------------------------------------------------------
   subroutine restFile_add_ilun_metadata(ncid)
     !

@@ -511,6 +511,10 @@ contains
        call htapes_fieldlist()
     end if
 
+    if (use_fates) then
+      call clm_fates%init_restart_flags
+    endif
+
     ! Read restart/initial info
     is_cold_start = .false.
     reset_dynbal_baselines_lake_columns = .false.
@@ -536,15 +540,29 @@ contains
              write(iulog,'(a)')'Reading initial conditions from file '//trim(finidat)
           end if
           call getfil( finidat, fnamer, 0 )
-          call restFile_read(bounds_proc, fnamer, glc_behavior, &
+          if (use_fates) then
+             call restFile_read(bounds_proc, fnamer, glc_behavior, &
+               reset_dynbal_baselines_lake_columns = reset_dynbal_baselines_lake_columns, &
+               nfates_flags=clm_fates%nfates_restart_flags,fates_flags=clm_fates%fates_restart_flags, &
+               fates_flags_names=clm_fates%fates_restart_flagnames)
+          else
+             call restFile_read(bounds_proc, fnamer, glc_behavior, &
                reset_dynbal_baselines_lake_columns = reset_dynbal_baselines_lake_columns)
+          end if
        end if
     else if ((nsrest == nsrContinue) .or. (nsrest == nsrBranch)) then
        if (masterproc) then
           write(iulog,'(a)')'Reading restart file '//trim(fnamer)
        end if
-       call restFile_read(bounds_proc, fnamer, glc_behavior, &
+       if (use_fates) then
+          call restFile_read(bounds_proc, fnamer, glc_behavior, &
+            reset_dynbal_baselines_lake_columns = reset_dynbal_baselines_lake_columns, &
+            nfates_flags=clm_fates%nfates_restart_flags,fates_flags=clm_fates%fates_restart_flags, &
+            fates_flags_names=clm_fates%fates_restart_flagnames)
+       else
+          call restFile_read(bounds_proc, fnamer, glc_behavior, &
             reset_dynbal_baselines_lake_columns = reset_dynbal_baselines_lake_columns)
+       end if
     end if
 
     ! If appropriate, create interpolated initial conditions

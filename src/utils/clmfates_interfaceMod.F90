@@ -245,11 +245,16 @@ module CLMFatesInterfaceMod
       ! Type structure that holds allocatable arrays for mpi-based seed dispersal
       type(dispersal_type) :: fates_seed
 
+      integer :: nfates_restart_flags
+      character(len=:), dimension(:), allocatable :: fates_restart_flagnames
+      logical,          allocatable               :: fates_restart_flags(:)
+
    contains
 
       procedure, public :: init
       procedure, public :: check_hlm_active
       procedure, public :: restart
+      procedure, public :: init_restart_flags
       procedure, public :: init_coldstart
       procedure, public :: dynamics_driv
       procedure, public :: wrap_sunfrac
@@ -1864,6 +1869,7 @@ module CLMFatesInterfaceMod
       integer                 :: ivar
       logical                 :: readvar
       logical, save           :: initialized = .false.
+      logical, save           :: bad_patches = .false.
 
      call t_startf('fates_restart')
 
@@ -1940,7 +1946,17 @@ module CLMFatesInterfaceMod
          ! HLM ACCORDING TO THEIR TYPES
          ! ------------------------------------------------------------------------------------
          call this%fates_restart%initialize_restart_vars()
-
+         ! We should only set this if it is define or write.
+         if (flag /= "read") then
+            if (masterproc) then
+               write(iulog,*) 'Setting fates restart flags on restart file.'
+            endif
+            this%fates_restart_flags(1) = use_fates
+            this%fates_restart_flags(2) = use_fates_nocomp
+            this%fates_restart_flags(3) = use_fates_sp
+            this%fates_restart_flags(4) = use_fates_luh
+            this%fates_restart_flags(5) = .true. ! bad patches flag
+         end if
       end if
 
       ! ---------------------------------------------------------------------------------
@@ -2013,7 +2029,12 @@ module CLMFatesInterfaceMod
 
          end associate
       end do
-
+      ! MVD ! TODO REMOVE AFTER  TESTING
+      if(masterproc) then
+      do nc = 1,this%nfates_restart_flags
+         write(iulog,*) 'MVD frestflag '//trim(this%fates_restart_flagnames(nc))//" is ",this%fates_restart_flags(nc)
+      end do
+      end if
       ! ---------------------------------------------------------------------------------
       ! If we are in a read mode, then we have just populated the sparse vectors
       ! in the IO object list. The data in these vectors needs to be transferred
@@ -2026,7 +2047,18 @@ module CLMFatesInterfaceMod
         ! and the first two can be called whenever, calling this outside 'read'
         ! will change the time that has been previously set in dynamics_driver
         call GetAndSetTime
-
+      !MVD !TODO REMOVE AFTER TESTING
+      if(masterproc) then
+      do nc = 1,this%nfates_restart_flags
+         write(iulog,*) 'MVD frestflag '//trim(this%fates_restart_flagnames(nc))//" is ",this%fates_restart_flags(nc)
+      end do
+         write(iulog,*) 'MVD nocomp: ', use_fates_nocomp
+      end if
+        ! if we are running with no comp and restart may have patches if cohorts of wrong PFT
+        if ((.not. this%fates_restart_flags(5)) .and. use_fates_nocomp) bad_patches = .true.
+        if (masterproc) then
+           write(iulog,*) 'MVD restart file can have bad patches: ', bad_patches
+        end if 
          !$OMP PARALLEL DO PRIVATE (nc,bounds_clump,s)
          do nc = 1, nclumps
             if (this%fates(nc)%nsites>0) then
@@ -2062,7 +2094,7 @@ module CLMFatesInterfaceMod
                   call ed_update_site( this%fates(nc)%sites(s), &
                         this%fates(nc)%bc_in(s), &
                         this%fates(nc)%bc_out(s), &
-                        is_restarting = .true. )
+                        is_restarting = .true. , bad_restart_patches=bad_patches)
 
                end do
 
@@ -2163,6 +2195,32 @@ module CLMFatesInterfaceMod
       return
    end subroutine restart
 
+   !=====================================================================================
+
+   subroutine init_restart_flags(this)
+      ! DESCRIPTION
+      ! Initializes restart flags variables for fates restart consistency routines.
+
+      ! Arguments:
+      class(hlm_fates_interface_type), intent(inout) :: this
+
+      ! Local variables
+      call t_startf('init_restart_flags')
+      this%nfates_restart_flags=5
+      allocate(character(len=24) :: this%fates_restart_flagnames(this%nfates_restart_flags))
+      allocate(this%fates_restart_flags(1:this%nfates_restart_flags))
+
+      this%fates_restart_flags(:) = .false.
+
+
+      this%fates_restart_flagnames = ["use_fates               ", &
+                                      "use_fates_nocomp        ", &
+                                      "use_fates_sp            ", &
+                                      "use_fates_lupft         ", &
+                                      "no_bad_lupft_patches    "]
+      call t_stopf('init_restart_flags')
+      return
+   end subroutine init_restart_flags
    !=====================================================================================
 
    subroutine init_coldstart(this, waterstatebulk_inst, waterdiagnosticbulk_inst, &
