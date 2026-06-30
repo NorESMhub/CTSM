@@ -1947,18 +1947,19 @@ module CLMFatesInterfaceMod
          ! ------------------------------------------------------------------------------------
          call this%fates_restart%initialize_restart_vars()
          ! We should only set this if it is define or write.
-         if (flag /= "read") then
-            if (masterproc) then
-               write(iulog,*) 'Setting fates restart flags on restart file.'
-            endif
-            this%fates_restart_flags(1) = use_fates
-            this%fates_restart_flags(2) = use_fates_nocomp
-            this%fates_restart_flags(3) = use_fates_sp
-            this%fates_restart_flags(4) = use_fates_luh
-            this%fates_restart_flags(5) = .true. ! bad patches flag
-         end if
       end if
 
+      ! set flags
+      if (flag /= "read") then
+         if (masterproc) then
+            write(iulog,*) 'Setting fates restart flags on restart file.'
+         endif
+         this%fates_restart_flags(1) = use_fates
+         this%fates_restart_flags(2) = use_fates_nocomp
+         this%fates_restart_flags(3) = use_fates_sp
+         this%fates_restart_flags(4) = use_fates_luh
+         this%fates_restart_flags(5) = .true. ! bad patches flag
+      end if
       ! ---------------------------------------------------------------------------------
       ! If we are writing, we must loop through our linked list structures and transfer the
       ! information in the linked lists (FATES state memory) to the output vectors.
@@ -2055,7 +2056,7 @@ module CLMFatesInterfaceMod
          write(iulog,*) 'MVD nocomp: ', use_fates_nocomp
       end if
         ! if we are running with no comp and restart may have patches if cohorts of wrong PFT
-        if ((.not. this%fates_restart_flags(5)) .and. use_fates_nocomp) bad_patches = .true.
+        !if ((.not. this%fates_restart_flags(5)) .and. use_fates_nocomp) bad_patches = .true.
         if (masterproc) then
            write(iulog,*) 'MVD restart file can have bad patches: ', bad_patches
         end if 

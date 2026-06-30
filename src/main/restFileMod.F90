@@ -124,9 +124,11 @@ contains
 
     call restFile_write_issues_fixed(ncid, &
          writing_finidat_interp_dest_file = writing_finidat_interp_dest_file)
+
     if (use_fates .and. present(nfates_flags)) then
        call restFile_write_fates_metadata(ncid,nfates_flags,fates_flags_names,fates_flags)
     endif 
+
     call restFile_enddef( ncid )
 
     ! Write variables
