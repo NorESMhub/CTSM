@@ -5,6 +5,7 @@ module clm_initializeMod
   !-----------------------------------------------------------------------
 
   use shr_kind_mod          , only : r8 => shr_kind_r8
+  use shr_kind_mod          , only : shr_kind_cx  
   use shr_sys_mod           , only : shr_sys_flush
   use shr_log_mod           , only : errMsg => shr_log_errMsg
   use spmdMod               , only : masterproc, mpicom
@@ -194,9 +195,9 @@ contains
     integer            :: mon             ! current month (1 -> 12)
     integer            :: day             ! current day (1 -> 31)
     integer            :: ncsec           ! current time of day [seconds]
-    character(len=512) :: fnamer          ! name of netcdf restart file
-    character(len=512) :: pnamer          ! full pathname of netcdf restart file
-    character(len=256) :: locfn           ! local file name
+    character(len=shr_kind_cx) :: fnamer          ! name of netcdf restart file
+    character(len=shr_kind_cx) :: pnamer          ! full pathname of netcdf restart file
+    character(len=shr_kind_cx) :: locfn           ! local file name
     type(file_desc_t)  :: ncid            ! netcdf id
     real(r8)           :: dtime           ! time step increment (sec)
     integer            :: nstep           ! model time step
