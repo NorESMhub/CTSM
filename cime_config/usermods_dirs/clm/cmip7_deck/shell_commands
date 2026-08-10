@@ -1,0 +1,29 @@
+
+compset=`./xmlquery COMPSET --value` 
+echo "fates_history_dimlevel = 2,2" >> user_nl_clm 
+
+echo ""
+echo "! h0a stream (monthly average, gridcell-level)" >> user_nl_clm
+echo "! h0a stream ICE variables and other variables inactive by default (monthly average, gridcell-level)" >> user_nl_clm
+echo "! Emon, Lmon, LIMon" >> user_nl_clm
+echo "hist_mfilt(1) = 12" >> user_nl_clm
+echo "hist_nhtfrq(1) = 0" >> user_nl_clm
+echo "hist_fincl1 = 'FATES_LITTER_BG_CWD_EL', 'FATES_VEGC_PF', 'FATES_STRUCTC', 'FATES_CROWNAREA_PF', 'TOTSOMC', 'TOT_WOODPRODC', 'CROPPROD1C'" >> user_nl_clm
+echo "" >> user_nl_clm
+echo "! h1a stream (daily average, grid-cell level)" >> user_nl_clm
+echo "! Eday, Lday " >> user_nl_clm
+echo "hist_mfilt(2) = 365" >> user_nl_clm
+echo "hist_nhtfrq(2) = -24" >> user_nl_clm
+echo "hist_fincl2 = 'H2OCAN','H2OSFC','QVEGE','QVEGT','QSOIL','QSNOEVAP','QRUNOFF','QOVER','QDRAI','QINTR','SOILLIQ','SOILICE','SOILWATER_10CM','SNOFSRVD','SNOFSRVI','SNOFSRND','SNOFSRNI','SNOFSDSVD','SNOFSDSVI','SNOFSDSND','SNOFSDSNI','FATES_LAI','TG','TSA','TSOI','TV','TOTSOILLIQ','TOTSOILICE','TWS','VOLR','ZWT'" >> user_nl_clm
+echo "" >> user_nl_clm
+echo "! h2a stream (3hrly timestep output, gridcell-level)" >> user_nl_clm
+echo "! 3hr" >> user_nl_clm
+echo "hist_mfilt(3) = 2920" >> user_nl_clm
+echo "hist_nhtfrq(3) = -3" >> user_nl_clm
+echo "hist_fincl3 = 'QRUNOFF', 'SOILLIQ', 'SOILICE', 'SOILWATER_10CM', 'TSA', 'TSL', 'FATES_GPP', 'FATES_NPP', 'FATES_AUTORESP', 'FATES_HET_RESP', 'FATES_FIRE_CLOSS'" >> user_nl_clm
+echo "" >> user_nl_clm
+echo "! h3a stream (yearly average output, gridcell-level)" >> user_nl_clm
+echo "! Eyr" >> user_nl_clm
+echo "hist_mfilt(4) = 1" >> user_nl_clm
+echo "hist_nhtfrq(4) = -8760" >> user_nl_clm
+echo "hist_fincl4 = 'FATES_VEGC','TOTSOMC','TOTLITC', 'FATES_NPLANT_CANOPY_SZPF', 'FATES_DDBH_CANOPY_SZPF', 'FATES_NPLANT_USTORY_SZPF', 'FATES_DDBH_USTORY_SZPF', 'FATES_MORTALITY_CANOPY_SZPF', 'FATES_MORTALITY_USTORY_SZPF', 'FATES_VEGC_SZPF'" >> user_nl_clm
