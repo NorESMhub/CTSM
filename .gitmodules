@@ -68,7 +68,7 @@ fxDONOTUSEurl = https://github.com/ESCOMP/mizuRoute
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/NorESMhub/ccs_config_noresm.git
-fxtag = ccs_config_noresm0.0.72
+fxtag = ccs_config_noresm0.0.75
 fxrequired = ToplevelRequired
 # Standard Fork to compare to with "git fleximod test" to ensure personal forks aren't committed
 fxDONOTUSEurl = https://github.com/NorESMhub/ccs_config_noresm
@@ -76,7 +76,7 @@ fxDONOTUSEurl = https://github.com/NorESMhub/ccs_config_noresm
 [submodule "cime"]
 path = cime
 url = https://github.com/NorESMhub/cime
-fxtag = cime6.1.173_noresm_v0
+fxtag = cime6.5.12_noresm_v1
 fxrequired = ToplevelRequired
 # Standard Fork to compare to with "git fleximod test" to ensure personal forks aren't committed
 fxDONOTUSEurl = https://github.com/NorESMhub/cime
@@ -84,7 +84,7 @@ fxDONOTUSEurl = https://github.com/NorESMhub/cime
 [submodule "cmeps"]
 path = components/cmeps
 url = https://github.com/NorESMhub/CMEPS.git
-fxtag = cmeps1.1.57_noresm_v4
+fxtag = cmeps1.1.57_noresm_v5
 fxrequired = ToplevelRequired
 # Standard Fork to compare to with "git fleximod test" to ensure personal forks aren't committed
 fxDONOTUSEurl = https://github.com/NorESMhub/CMEPS.git
