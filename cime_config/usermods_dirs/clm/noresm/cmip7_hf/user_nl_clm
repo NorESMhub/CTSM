@@ -45,4 +45,11 @@ hist_fincl3 = 'FATES_VEGC','TOTSOMC','TOTLITC', 'FATES_NPLANT_CANOPY_SZPF', 'FAT
 ! 3hr
 hist_mfilt(4) = 584
 hist_nhtfrq(4) = -3
-hist_fincl4 = 'FSA','FIRA','QVEGE','QVEGT','QRUNOFF','SOILLIQ','SOILICE','SOILWATER_10CM','TSA','TSL','FATES_GPP','FATES_NPP','FATES_AUTORESP','FATES_HET_RESP','FATES_FIRE_CLOSS'
+hist_fincl4 = 'FSA','FIRA','QVEGE','QVEGT','QRUNOFF','SOILLIQ','SOILICE','SOILWATER_10CM','TSL','FATES_GPP','FATES_NPP','FATES_AUTORESP','FATES_HET_RESP','FATES_FIRE_CLOSS', 'QOVER'
+
+hist_mfilt(5) = 584
+hist_nhtfrq(5) = -3
+hist_avgflag_pertape(5) = "I"
+hist_fincl5 = 'TSA', 'SOILWATER_10CM'
+
+
