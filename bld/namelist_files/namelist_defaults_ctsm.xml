@@ -292,7 +292,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 
 <!-- Pritchard et al. (GRL, 35, 2008) use 0.006 -->
 <lapse_rate>0.006</lapse_rate>
-<lapse_rate esm="noresm">0.0092</lapse_rate>
+<lapse_rate esm="noresm">0.0098</lapse_rate>
 
 <!-- Based on Van Tricht et al. (2016, TC) Figure 6, doi:10.5194/tc-10-2379-2016 -->
 <lapse_rate_longwave>0.032</lapse_rate_longwave>
