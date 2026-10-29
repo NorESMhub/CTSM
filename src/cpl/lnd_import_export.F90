@@ -248,7 +248,7 @@ contains
           co2_ppmv_val = co2_ppmv
        end if
        if ( (co2_ppmv_val < 10.0_r8) .or. (co2_ppmv_val > 15000.0_r8) )then
-          call endrun( sub//' ERROR: CO2 is outside of an expected range' )
+          write(iulog,*)'WARNING: CO2 outside expected range: ', co2_ppmv_val, co2_type_idx
        end if
        atm2lnd_inst%forc_pco2_grc(g)   = co2_ppmv_val * 1.e-6_r8 * forc_pbot 
        if (use_c13) then
