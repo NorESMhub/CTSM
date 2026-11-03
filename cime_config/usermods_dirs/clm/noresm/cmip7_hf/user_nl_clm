@@ -27,7 +27,7 @@ fates_history_dimlevel = 2,2
 ! Emon, Lmon, LIMon
 hist_mfilt(1) = 12
 hist_nhtfrq(1) = 0
-hist_fincl1 = 'FATES_LITTER_BG_CWD_EL','FATES_VEGC_PF','FATES_STRUCTC','FATES_CROWNAREA_PF','TOTSOMC','TOT_WOODPRODC','FATES_SEED_BANK','FATES_GPP_LU','FATES_NEP', 'FATES_NPP_LU','SOM_ACT_C', 'SOM_PAS_C', 'SOM_SLO_C', 
+hist_fincl1 = 'FATES_LITTER_BG_CWD_EL','FATES_VEGC_PF','FATES_STRUCTC','FATES_CROWNAREA_PF','TOTSOMC','TOT_WOODPRODC','FATES_SEED_BANK','FATES_GPP_LU','FATES_NEP', 'FATES_NPP_LU','SOM_ACT_C', 'SOM_PAS_C', 'SOM_SLO_C', 'TOTSOMC'
 
 ! h1a stream (daily average, grid-cell level)
 ! Eday, Lday 
