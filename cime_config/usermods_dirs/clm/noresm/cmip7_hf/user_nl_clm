@@ -52,4 +52,7 @@ hist_nhtfrq(5) = -3
 hist_avgflag_pertape(5) = "I"
 hist_fincl5 = 'TSA', 'SOILWATER_10CM'
 
-
+hist_mfilt(6) = 1
+hist_nhtfrq(6) = -8760
+hist_avgflag_pertape(6) = "I"
+hist_fincl6 = FATES_VEGC_LU
