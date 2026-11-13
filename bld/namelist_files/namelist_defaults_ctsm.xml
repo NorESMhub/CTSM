@@ -2820,6 +2820,9 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <fates_history_dimlevel         use_fates=".true.">2,2</fates_history_dimlevel>
 <fates_history_dimlevel         use_fates=".true." clm_accelerated_spinup="on">2,1</fates_history_dimlevel>
 <fates_history_dimlevel         use_fates=".true." clm_accelerated_spinup="sasu">2,1</fates_history_dimlevel>
+<use_fates_ptfix>.true.</use_fates_ptfix>
+<use_fates_ptfix                use_fates=".true." lnd_tuning_mode="clm6_0_cam7.0" 
+  esm="noresm" hgrid="ne16np4" sim_year="1850" use_fates_lupft=".true.">.false.</use_fates_ptfix>
 
 <!-- Supplmental Nitrogen mode -->
 <!-- FATES carbon_only needs suplnitro set to ALL. -->
