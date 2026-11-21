@@ -5152,6 +5152,13 @@ sub setup_logic_fates {
               }
            }
         }
+
+        my $var = "use_fates_ptfix";
+        add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, $var, 'use_fates'=>$nl_flags->{'use_fates'},
+                                'hgrid'=>$nl_flags->{'res'}, 'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'bgc_mode'=>$nl_flags->{'bgc_mode'},
+                                'use_fates_lupft'=>$nl->{'use_fates_lupft'}, 'lnd_tuning_mode'=>$nl_flags->{'lnd_tuning_mode'},
+                                'sim_year'=>$nl_flags->{'sim_year'}, 'esm'=>$nl_flags->{'esm'});
+
         # check that fates landuse is on and harvest mode is off when potential veg switch is true
         my $var = "use_fates_potentialveg";
         if ( defined($nl->get_value($var))  ) {

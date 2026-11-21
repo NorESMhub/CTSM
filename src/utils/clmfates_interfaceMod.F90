@@ -75,6 +75,7 @@ module CLMFatesInterfaceMod
    use clm_varctl        , only : use_fates_luh
    use clm_varctl        , only : use_fates_lupft
    use clm_varctl        , only : use_fates_potentialveg
+   use clm_varctl        , only : use_fates_ptfix
    use clm_varctl        , only : flandusepftdat
    use clm_varctl        , only : fates_seeddisp_cadence
    use clm_varctl        , only : fates_inventory_ctrl_filename
@@ -440,6 +441,7 @@ module CLMFatesInterfaceMod
      integer                                        :: pass_cohort_age_tracking
      integer                                        :: pass_tree_damage
      integer                                        :: pass_use_potentialveg
+     integer                                        :: pass_use_ptfix
      integer                                        :: pass_num_luh_states
      integer                                        :: pass_num_luh_transitions
      integer                                        :: pass_photosynth_acclimation_switch
@@ -670,6 +672,13 @@ module CLMFatesInterfaceMod
            pass_use_potentialveg = 0
         end if
         call set_fates_ctrlparms('use_fates_potentialveg',ival=pass_use_potentialveg)
+
+        if ( use_fates_ptfix ) then
+           pass_use_ptfix = 1
+        else
+           pass_use_ptfix = 0
+        end if
+        call set_fates_ctrlparms('use_fates_ptfix',ival=pass_use_ptfix)
 
         if(use_fates_inventory_init) then
            pass_inventory_init = 1

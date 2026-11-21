@@ -264,6 +264,7 @@ contains
           fates_photosynth_acclimation,                 &
           use_fates_managed_fire,                       &
           fates_lu_transition_logic,                    &
+          use_fates_ptfix,                              &
           fates_history_dimlevel
 
     ! Ozone vegetation stress method
@@ -853,6 +854,7 @@ contains
     call mpi_bcast (use_fates_luh, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_fates_lupft, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_fates_potentialveg, 1, MPI_LOGICAL, 0, mpicom, ier)
+    call mpi_bcast (use_fates_ptfix, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_fates_bgc, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_fates_daylength_factor, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (fates_photosynth_acclimation, len(fates_photosynth_acclimation), MPI_CHARACTER, 0, mpicom, ier)
@@ -1275,6 +1277,7 @@ contains
        write(iulog, *) '    use_fates_luh= ', use_fates_luh
        write(iulog, *) '    use_fates_lupft= ', use_fates_lupft
        write(iulog, *) '    use_fates_potentialveg = ', use_fates_potentialveg
+       write(iulog, *) '    use_fates_ptfix = ', use_fates_ptfix
        write(iulog, *) '    fluh_timeseries = ', trim(fluh_timeseries)
        write(iulog, *) '    flandusepftdat = ', trim(flandusepftdat)
        write(iulog, *) '    fates_seeddisp_cadence = ', fates_seeddisp_cadence

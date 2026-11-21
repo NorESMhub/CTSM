@@ -379,6 +379,7 @@ module clm_varctl
   logical, public            :: use_fates_luh = .false.                 ! true => use FATES landuse data mode
   logical, public            :: use_fates_lupft = .false.               ! true => use FATES landuse x pft static mapping mode
   logical, public            :: use_fates_potentialveg = .false.        ! true => FATES potential veg only
+  logical, public            :: use_fates_ptfix = .true.                ! false => Do not use FATES tiny patch fix for backwards compatibility
   character(len=256), public :: fluh_timeseries = ''                    ! filename for fates landuse timeseries data
   character(len=256), public :: flandusepftdat = ''                     ! filename for fates landuse x pft data
   character(len=256), public :: fates_inventory_ctrl_filename = ''      ! filename for inventory control
