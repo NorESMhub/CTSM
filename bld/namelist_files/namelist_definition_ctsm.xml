@@ -2403,7 +2403,7 @@ CLM run type.
 
 <entry id="ssp_rcp" type="char*8" category="default_settings"
        group="default_settings"
-       valid_values="hist,SSP1-2.6,SSP3-7.0,SSP5-3.4,SSP2-4.5,SSP1-1.9,SSP4-3.4,SSP4-6.0,SSP5-8.5">
+       valid_values="hist,SSP1-2.6,SSP3-7.0,SSP5-3.4,SSP2-4.5,SSP1-1.9,SSP4-3.4,SSP4-6.0,SSP5-8.5,scen7-h,scen7-hl,scen7-m,scen7-ml,scen7-l,scen7-vl,scen7-ln">
 Shared Socioeconomic Pathway (SSP) and Representative Concentration Pathway (RCP) combination for future scenarios
 The form is SSPn-m.m Where n is the SSP number and m.m is RCP radiative forcing at peak or 2100 in W/m^2
 n is just the whole number of the specific SSP scenario. The lower numbers have higher mitigation
@@ -2456,7 +2456,7 @@ CLM datasets exist for years: 1000 (for testing), 1850, and 2000
 
 <entry id="sim_year_range" type="char*9" category="default_settings"
        group="default_settings" valid_values=
-"constant,1000-1002,1000-1004,850-1850,1850-1855,1850-2000,1850-2005,1850-2100,1980-2015,2000-2025,2000-2100">
+"constant,1000-1002,1000-1004,850-1850,1850-1855,1850-2000,1850-2005,1850-2100,1980-2015,2000-2025,2000-2100,1850-2400">
 Range of years to simulate transitory datasets for (such as dynamic: land-use datasets, aerosol-deposition, Nitrogen deposition rates etc.)
 Constant means simulation will be held at a constant year given in sim_year.
 A sim_year_range of 1000-1002 or 1000-1004 corresponds to data used for testing only, NOT corresponding to any real datasets.

@@ -2234,6 +2234,9 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <fluh_timeseries hgrid="ne16np4.pg3" sim_year_range="1850-2000" sim_year="1850" use_fates=".true." esm="noresm"
 >lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_850-2024_surfdata_ne16np4_c260603.nc</fluh_timeseries>
 
+ <!-- NorESM scenarios LUH3_timeseries_h_2022-2100_ne16np4_c261007.nc  -->
+<fluh_timeseries hgrid="ne16np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-h"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_h_2022-2100_ne16np4_c261007.nc</fluh_timeseries>
 
 <!-- Fixation and Uptake of Nitrogen Model (FUN2.0) -->
 <use_fun                                                            >.false.</use_fun>
