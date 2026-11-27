@@ -4204,18 +4204,19 @@ sub setup_logic_popd_streams {
                  'clm_accelerated_spinup'=>$nl_flags->{'clm_accelerated_spinup'}, 'cnfireson'=>$nl_flags->{'cnfireson'}  );
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_year_first_popdens', 'phys'=>$nl_flags->{'phys'},
                  'cnfireson'=>$nl_flags->{'cnfireson'}, 'sim_year'=>$nl_flags->{'sim_year'},
-                 'sim_year_range'=>$nl_flags->{'sim_year_range'});
+                 'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'cmip_era'=>$nl_flags->{'cmip_era'},'esm'=>$nl_flags->{'esm'});
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_year_last_popdens', 'phys'=>$nl_flags->{'phys'},
                  'cnfireson'=>$nl_flags->{'cnfireson'}, 'sim_year'=>$nl_flags->{'sim_year'},
-                 'sim_year_range'=>$nl_flags->{'sim_year_range'});
+                 'sim_year_range'=>$nl_flags->{'sim_year_range'},'cmip_era'=>$nl_flags->{'cmip_era'},'esm'=>$nl_flags->{'esm'});
      # Set align year, if first and last years are different
      if ( $nl->get_value('stream_year_first_popdens') !=
           $nl->get_value('stream_year_last_popdens') ) {
         add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'model_year_align_popdens', 'sim_year'=>$nl_flags->{'sim_year'},
-                    'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'cnfireson'=>$nl_flags->{'cnfireson'});
+                    'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'cnfireson'=>$nl_flags->{'cnfireson'},
+                    'cmip_era'=>$nl_flags->{'cmip_era'},'esm'=>$nl_flags->{'esm'});
      }
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_fldfilename_popdens', 'phys'=>$nl_flags->{'phys'},
-                 'cnfireson'=>$nl_flags->{'cnfireson'}, 'hgrid'=>"0.5x0.5", 'ssp_rcp'=>$nl_flags->{'ssp_rcp'} );
+                 'cnfireson'=>$nl_flags->{'cnfireson'}, 'hgrid'=>"0.5x0.5", 'ssp_rcp'=>$nl_flags->{'ssp_rcp'}, "use_fates"=>$nl_flags->{'use_fates'} );
 
     if ($opts->{'driver'} eq "nuopc" ) {
         add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_meshfile_popdens', 'hgrid'=>"0.5x0.5");

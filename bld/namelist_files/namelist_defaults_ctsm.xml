@@ -2236,7 +2236,23 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 
  <!-- NorESM scenarios LUH3_timeseries_h_2022-2100_ne16np4_c261007.nc  -->
 <fluh_timeseries hgrid="ne16np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-h"
->lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_h_2022-2100_ne16np4_c261007.nc</fluh_timeseries>
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_h-3-1_2022-2500_ne16np4_c20261127.nc</fluh_timeseries>
+<fluh_timeseries hgrid="ne16np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-hl"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_hl-3-1_2022-2500_ne16np4_c20261127.nc</fluh_timeseries>
+<fluh_timeseries hgrid="ne16np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-m"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_m-3-1_2022-2500_ne16np4_c20261127.nc</fluh_timeseries>
+<fluh_timeseries hgrid="ne16np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-vl"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_vl-3-1_2022-2500_ne16np4_c20261127.nc</fluh_timeseries>
+
+
+<fluh_timeseries hgrid="ne30np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-h"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_h-3-1_2022-2500_ne30np4_c20261127.nc</fluh_timeseries>
+<fluh_timeseries hgrid="ne30np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-hl"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_hl-3-1_2022-2500_ne30np4_c20261127.nc</fluh_timeseries>
+<fluh_timeseries hgrid="ne30np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-m"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_m-3-1_2022-2500_ne30np4_c20261127.nc</fluh_timeseries>
+<fluh_timeseries hgrid="ne30np4.pg3" sim_year_range="1850-2100" use_fates=".true." esm="noresm" ssp_rcp="scen7-vl"
+>lnd/clm2/surfdata_esmf/ctsm5.4.0/fates_LU_data_CMIP7/LUH3_timeseries_vl-3-1_2022-2500_ne30np4_c20261127.nc</fluh_timeseries>
 
 <!-- Fixation and Uptake of Nitrogen Model (FUN2.0) -->
 <use_fun                                                            >.false.</use_fun>
@@ -2465,6 +2481,11 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 <stream_year_last_popdens                 cnfireson=".true." sim_year_range="1850-2100"  >2100</stream_year_last_popdens>
 <model_year_align_popdens                 cnfireson=".true." sim_year_range="1850-2100"  >2015</model_year_align_popdens>
 
+
+<stream_year_first_popdens cmip_era="cmip7" esm="noresm" cnfireson=".true." sim_year_range="1850-2100" >2015</stream_year_first_popdens>
+<model_year_align_popdens  cmip_era="cmip7" esm="noresm" cnfireson=".true." sim_year_range="1850-2100" >2022</model_year_align_popdens>
+<stream_year_last_popdens  cmip_era="cmip7" esm="noresm" cnfireson=".true." sim_year_range="1850-2100" >2300</stream_year_last_popdens>
+
 <stream_year_first_popdens use_cn=".true."   sim_year="2018" >2018</stream_year_first_popdens>
 <stream_year_last_popdens  use_cn=".true."   sim_year="2018" >2018</stream_year_last_popdens>
 
@@ -2542,6 +2563,23 @@ lnd/clm2/surfdata_esmf/NEON/ctsm5.4.0/surfdata_1x1_NEON_TOOL_hist_2000_78pfts_c2
 </stream_fldfilename_popdens>
 <stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="SSP5-3.4" >lnd/clm2/firedata/clmforc.Li_2018_SSP5_CMIP6_hdm_0.5x0.5_AVHRR_simyr1850-2100_c181205.nc
 </stream_fldfilename_popdens>
+
+<!-- CMIP7 scenarios-->
+<stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="scen7-h" >lnd/clm2/firedata/hdm_input4MIPs_CMIP7_0.5x0.5_PIK-h-1-0-0_gr_1850-2300_c20261127.nc
+</stream_fldfilename_popdens>
+<stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="scen7-hl" >lnd/clm2/firedata/hdm_input4MIPs_CMIP7_0.5x0.5_PIK-hl-1-0-0_gr_1850-2300_c20261127.nc
+</stream_fldfilename_popdens>
+<stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="scen7-l" >lnd/clm2/firedata/hdm_input4MIPs_CMIP7_0.5x0.5_PIK-l-1-0-0_gr_1850-2300_c20261127.nc
+</stream_fldfilename_popdens>
+<stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="scen7-ln" >lnd/clm2/firedata/hdm_input4MIPs_CMIP7_0.5x0.5_PIK-ln-1-0-0_gr_1850-2300_c20261127.nc
+</stream_fldfilename_popdens>
+<stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="scen7-m" >lnd/clm2/firedata/hdm_input4MIPs_CMIP7_0.5x0.5_PIK-m-1-0-0_gr_1850-2300_c20261127.nc
+</stream_fldfilename_popdens>
+<stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="scen7-ml" >lnd/clm2/firedata/hdm_input4MIPs_CMIP7_0.5x0.5_PIK-ml-1-0-0_gr_1850-2300_c20261127.nc
+</stream_fldfilename_popdens>
+<stream_fldfilename_popdens hgrid="0.5x0.5"   use_fates=".true." ssp_rcp="scen7-vl" >lnd/clm2/firedata/hdm_input4MIPs_CMIP7_0.5x0.5_PIK-vl-1-0-0_gr_1850-2300_c20261127.nc
+</stream_fldfilename_popdens>
+
 
 <stream_meshfile_popdens    hgrid="0.5x0.5">lnd/clm2/firedata/clmforc.Li_2017_HYDEv3.2_CMIP6_hdm_0.5x0_ESMFmesh_cdf5_100621.nc</stream_meshfile_popdens>
 
