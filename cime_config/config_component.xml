@@ -256,6 +256,7 @@ Caveats:
       <value compset="^SSP585[CE]?_" >1850-2100_SSP5-8.5_transient</value>
       <value compset="^AMIP_" >20thC_transient</value>
       <value compset="^PIPD_" >1850-2100_SSP5-8.5_transient</value>
+      <value compset="^SCEN7H_" >1850-2100_scen7-h_transient</value>
     </values>
     <group>run_component_ctsm</group>
     <file>env_run.xml</file>

@@ -2577,6 +2577,7 @@ sub setup_logic_demand {
   $settings{'use_nitrif_denitrif'} = $nl_flags->{'use_nitrif_denitrif'};
   $settings{'use_crop'}            = $nl_flags->{'use_crop'};
   $settings{'neon'}                = $nl_flags->{'neon'};
+  $settings{'use_fates'}                = $nl_flags->{'use_fates'};
 
   my $demand = $nl->get_value('clm_demand');
   if (defined($demand)) {
@@ -2643,7 +2644,6 @@ sub setup_logic_surface_dataset {
     }
   }
   $flanduse_timeseries = $nl_flags->{'flanduse_timeseries'};
-
   if ($flanduse_timeseries ne "null" && &value_is_true($nl_flags->{'use_cndv'}) ) {
      $log->fatal_error( "dynamic PFT's (setting flanduse_timeseries) are incompatible with dynamic vegetation (use_cndv=.true)." );
   }
@@ -4204,18 +4204,19 @@ sub setup_logic_popd_streams {
                  'clm_accelerated_spinup'=>$nl_flags->{'clm_accelerated_spinup'}, 'cnfireson'=>$nl_flags->{'cnfireson'}  );
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_year_first_popdens', 'phys'=>$nl_flags->{'phys'},
                  'cnfireson'=>$nl_flags->{'cnfireson'}, 'sim_year'=>$nl_flags->{'sim_year'},
-                 'sim_year_range'=>$nl_flags->{'sim_year_range'});
+                 'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'cmip_era'=>$nl_flags->{'cmip_era'},'esm'=>$nl_flags->{'esm'});
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_year_last_popdens', 'phys'=>$nl_flags->{'phys'},
                  'cnfireson'=>$nl_flags->{'cnfireson'}, 'sim_year'=>$nl_flags->{'sim_year'},
-                 'sim_year_range'=>$nl_flags->{'sim_year_range'});
+                 'sim_year_range'=>$nl_flags->{'sim_year_range'},'cmip_era'=>$nl_flags->{'cmip_era'},'esm'=>$nl_flags->{'esm'});
      # Set align year, if first and last years are different
      if ( $nl->get_value('stream_year_first_popdens') !=
           $nl->get_value('stream_year_last_popdens') ) {
         add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'model_year_align_popdens', 'sim_year'=>$nl_flags->{'sim_year'},
-                    'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'cnfireson'=>$nl_flags->{'cnfireson'});
+                    'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'cnfireson'=>$nl_flags->{'cnfireson'},
+                    'cmip_era'=>$nl_flags->{'cmip_era'},'esm'=>$nl_flags->{'esm'});
      }
      add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_fldfilename_popdens', 'phys'=>$nl_flags->{'phys'},
-                 'cnfireson'=>$nl_flags->{'cnfireson'}, 'hgrid'=>"0.5x0.5", 'ssp_rcp'=>$nl_flags->{'ssp_rcp'} );
+                 'cnfireson'=>$nl_flags->{'cnfireson'}, 'hgrid'=>"0.5x0.5", 'ssp_rcp'=>$nl_flags->{'ssp_rcp'}, "use_fates"=>$nl_flags->{'use_fates'} );
 
     if ($opts->{'driver'} eq "nuopc" ) {
         add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_meshfile_popdens', 'hgrid'=>"0.5x0.5");
@@ -5130,7 +5131,7 @@ sub setup_logic_fates {
                  if ( ! &value_is_true($nl->get_value($var)) ) {
                     $var = "fluh_timeseries";
                     add_default($opts, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, $var, 'use_fates'=>$nl_flags->{'use_fates'},
-                                'hgrid'=>$nl_flags->{'res'}, 'sim_year_range'=>$nl_flags->{'sim_year_range'}, 
+                                'hgrid'=>$nl_flags->{'res'}, 'sim_year_range'=>$nl_flags->{'sim_year_range'}, 'ssp_rcp'=>$nl_flags->{'ssp_rcp'},
                                 'sim_year'=>$nl_flags->{'sim_year'}, 'esm'=>$nl_flags->{'esm'});
                     my $fname = remove_leading_and_trailing_quotes( $nl->get_value($var) );
                     if ( ! defined($nl->get_value($var))  ) {
@@ -5893,9 +5894,12 @@ sub check_use_case_name {
                   "in namelist_files/use_cases/README\n";
   my $desc = "[a-zA-Z0-9]*";
   my $ssp_rcp  = "SSP[0-9]-[0-9\.]+";
+  my $cmip7_scen = "scen7-[hlmvn\.]+";
   if (      $use_case =~ /^[0-9]+-[0-9]+([a-zA-Z0-9_\.-]*)_transient$/ ) {
     my $string = $1;
     if (      $string =~ /^_($ssp_rcp)_*($desc)$/ ) {
+       # valid name
+    } elsif ( $string =~/^_($cmip7_scen)_*($desc)$/ ) {
        # valid name
     } elsif ( $string =~ /^_*($desc)$/ ) {
        # valid name
@@ -5907,6 +5911,8 @@ sub check_use_case_name {
     if (      $string =~ /^_($ssp_rcp)_*($desc)$/ ) {
        # valid name
     } elsif ( $string =~ /^_*($desc)$/ ) {
+       # valid name
+    } elsif ( $string =~/^_($cmip7_scen)_*($desc)$/ ) {
        # valid name
     } else {
       $log->fatal_error($diestring);
